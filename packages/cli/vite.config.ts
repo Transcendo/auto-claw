@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { builtinModules } from 'node:module'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
@@ -20,6 +21,10 @@ export default defineConfig({
       fileName: () => 'cli.js'
     },
     rollupOptions: {
+      external: [
+        ...builtinModules,
+        ...builtinModules.map((module) => `node:${module}`)
+      ],
       output: {
         banner: '#!/usr/bin/env node'
       }

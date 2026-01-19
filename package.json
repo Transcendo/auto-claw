@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "start:cli": "pnpm --filter ./packages/cli build && pnpm --filter ./packages/cli start",
-    "build": "pnpm -r build",
+    "build": "pnpm --filter ./packages/cli build",
     "typecheck": "pnpm -r typecheck"
   },
   "engines": {
