@@ -1,0 +1,12 @@
+{
+  "name": "auto-code-monorepo",
+  "private": true,
+  "scripts": {
+    "start:cli": "pnpm --filter ./packages/cli build && pnpm --filter ./packages/cli start",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

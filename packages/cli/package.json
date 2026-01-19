@@ -1,0 +1,26 @@
+{
+  "name": "auto-code-cli",
+  "version": "0.1.0",
+  "description": "Modern TypeScript CLI template built with Vite",
+  "type": "module",
+  "bin": {
+    "auto-code": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
+  }
+}
