@@ -37,9 +37,12 @@ async function main() {
 
   const frontendDir = resolve(repoRoot, 'packages', 'frontend')
   const backendDir = resolve(repoRoot, 'packages', 'backend')
+  const coreDir = resolve(repoRoot, 'packages', 'core')
   const cliDist = resolve(cliDir, 'dist')
   const webDist = resolve(cliDist, 'web')
+  const coreDist = resolve(cliDist, 'core')
 
+  await runCommand('pnpm', ['--filter', './packages/core', 'build'], repoRoot)
   await runCommand('pnpm', ['--filter', './packages/frontend', 'build'], repoRoot)
   await runCommand('pnpm', ['--filter', './packages/backend', 'build'], repoRoot)
   await runCommand('pnpm', ['--filter', './packages/cli', 'build:cli'], repoRoot)
@@ -52,6 +55,12 @@ async function main() {
     recursive: true,
   })
   await cp(resolve(backendDir, 'dist'), resolve(webDist, 'backend'), {
+    recursive: true,
+  })
+
+  await rm(coreDist, { recursive: true, force: true })
+  await mkdir(coreDist, { recursive: true })
+  await cp(resolve(coreDir, 'dist'), coreDist, {
     recursive: true,
   })
 

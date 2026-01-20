@@ -1,4 +1,4 @@
-# auto-code-cli
+# @auto-code/cli
 
 A modern TypeScript CLI template built with Vite.
 

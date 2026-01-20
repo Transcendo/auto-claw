@@ -1,10 +1,22 @@
 {
-  "name": "auto-code-monorepo",
-  "private": true,
+  "name": "auto-code",
+  "version": "0.1.0",
+  "description": "Auto Code CLI with bundled frontend and backend",
+  "type": "module",
+  "bin": {
+    "auto-code": "packages/cli/dist/cli.js"
+  },
+  "files": [
+    "packages/cli/dist"
+  ],
   "scripts": {
     "start:cli": "pnpm --filter ./packages/cli build && pnpm --filter ./packages/cli start",
     "build": "pnpm --filter ./packages/cli build",
     "typecheck": "pnpm -r typecheck"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.0",
+    "hono": "^4.9.1"
   },
   "engines": {
     "node": ">=18"

@@ -4,9 +4,12 @@ This repo contains a CLI, frontend, and backend integrated in a pnpm monorepo.
 
 ## Packages
 
-- `packages/cli`: CLI package (binary name: `auto-code`)
-- `packages/frontend`: Frontend app
-- `packages/backend`: Hono API server
+- `packages/cli`: `@auto-code/cli` (private, internal)
+- `packages/frontend`: `@auto-code/frontend` (private, internal)
+- `packages/backend`: `@auto-code/backend` (private, internal)
+- `packages/core`: `@auto-code/core` (private, internal)
+
+Published package: `auto-code`
 
 ## Quick start
 

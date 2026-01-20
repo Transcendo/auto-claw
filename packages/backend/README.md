@@ -1,4 +1,4 @@
-# auto-code-backend
+# @auto-code/backend
 
 Hono API server for the auto-code monorepo.
 

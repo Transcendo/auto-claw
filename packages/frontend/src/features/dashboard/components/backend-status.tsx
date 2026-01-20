@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { formatBackendStatus } from '@auto-code/core'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 type BackendHello = {
@@ -20,10 +21,24 @@ export function BackendStatus() {
     queryFn: fetchBackendHello,
   })
 
-  let content = 'Ready'
-  if (isLoading) content = 'Loading...'
-  if (isError) content = 'Unavailable'
-  if (data?.message) content = data.message
+  let title = 'Ready'
+  let subtitle = 'Waiting for server response'
+
+  if (isLoading) {
+    title = 'Loading...'
+    subtitle = 'Fetching backend status'
+  }
+
+  if (isError) {
+    title = 'Unavailable'
+    subtitle = 'Backend is not responding'
+  }
+
+  if (data) {
+    const formatted = formatBackendStatus(data)
+    title = formatted.title
+    subtitle = formatted.subtitle
+  }
 
   return (
     <Card>
@@ -45,10 +60,8 @@ export function BackendStatus() {
         </svg>
       </CardHeader>
       <CardContent>
-        <div className='text-2xl font-bold'>{content}</div>
-        <p className='text-xs text-muted-foreground'>
-          {data?.time ? `Updated at ${data.time}` : 'Waiting for server response'}
-        </p>
+        <div className='text-2xl font-bold'>{title}</div>
+        <p className='text-xs text-muted-foreground'>{subtitle}</p>
       </CardContent>
     </Card>
   )

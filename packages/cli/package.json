@@ -1,6 +1,7 @@
 {
-  "name": "auto-code-cli",
+  "name": "@auto-code/cli",
   "version": "0.1.0",
+  "private": true,
   "description": "Modern TypeScript CLI template built with Vite",
   "type": "module",
   "bin": {
@@ -20,12 +21,11 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.0",
-    "commander": "^14.0.0",
-    "hono": "^4.9.1"
+    "commander": "^14.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@auto-code/core": "workspace:*",
     "typescript": "~5.9.3",
     "vite": "^7.2.4"
   }

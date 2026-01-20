@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { buildGreeting } from '@auto-code/core'
 
 const VERSION = __APP_VERSION__
 
@@ -77,7 +78,7 @@ program
   .description('Print a greeting')
   .argument('[name]', 'Name to greet', 'world')
   .action((name: string) => {
-    console.log(`Hello, ${name}!`)
+    console.log(buildGreeting(name))
   })
 
 program

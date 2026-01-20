@@ -6,10 +6,20 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.19.0
+        version: 1.19.9(hono@4.11.4)
+      hono:
+        specifier: ^4.9.1
+        version: 4.11.4
 
   packages/backend:
     dependencies:
+      '@auto-code/core':
+        specifier: workspace:*
+        version: link:../core
       '@hono/node-server':
         specifier: ^1.19.0
         version: 1.19.9(hono@4.11.4)
@@ -26,19 +36,19 @@ importers:
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
+      vite:
+        specifier: ^7.2.4
+        version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)
 
   packages/cli:
     dependencies:
-      '@hono/node-server':
-        specifier: ^1.19.0
-        version: 1.19.9(hono@4.11.4)
       commander:
         specifier: ^14.0.0
         version: 14.0.2
-      hono:
-        specifier: ^4.9.1
-        version: 4.11.4
     devDependencies:
+      '@auto-code/core':
+        specifier: workspace:*
+        version: link:../core
       '@types/node':
         specifier: ^24.0.0
         version: 24.10.9
@@ -49,8 +59,20 @@ importers:
         specifier: ^7.2.4
         version: 7.3.1(@types/node@24.10.9)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)
 
+  packages/core:
+    devDependencies:
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.2.4
+        version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)
+
   packages/frontend:
     dependencies:
+      '@auto-code/core':
+        specifier: workspace:*
+        version: link:../core
       '@clerk/clerk-react':
         specifier: ^5.58.1
         version: 5.59.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)

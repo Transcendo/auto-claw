@@ -4,12 +4,13 @@ import { resolve } from 'node:path'
 import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
+import { buildGreeting } from '@auto-code/core'
 
 const app = new Hono()
 
 app.get('/api/hello', (c) => {
   return c.json({
-    message: 'Hello from backend',
+    message: buildGreeting('backend'),
     time: new Date().toISOString(),
   })
 })
