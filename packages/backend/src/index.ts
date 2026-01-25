@@ -1,10 +1,11 @@
-import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { Hono } from 'hono'
+import process from 'node:process'
+import { buildGreeting } from '@auto-code/core'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
-import { buildGreeting } from '@auto-code/core'
+import { Hono } from 'hono'
 
 const app = new Hono()
 
@@ -19,12 +20,14 @@ const distDir = process.env.FRONTEND_DIST
 if (distDir && existsSync(distDir)) {
   app.use('/*', serveStatic({ root: distDir }))
   app.get('*', async (c) => {
-    if (c.req.path.startsWith('/api/')) return c.notFound()
+    if (c.req.path.startsWith('/api/'))
+      return c.notFound()
     const indexPath = resolve(distDir, 'index.html')
     const html = await readFile(indexPath, 'utf-8')
     return c.html(html)
   })
-} else if (distDir) {
+}
+else if (distDir) {
   console.warn(`[backend] FRONTEND_DIST not found: ${distDir}`)
 }
 

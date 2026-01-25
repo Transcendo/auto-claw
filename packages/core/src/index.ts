@@ -1,4 +1,4 @@
-export type HelloPayload = {
+export interface HelloPayload {
   message: string
   time: string
 }

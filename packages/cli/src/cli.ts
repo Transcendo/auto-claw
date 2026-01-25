@@ -1,18 +1,19 @@
-import { Command } from 'commander'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { buildGreeting } from '@auto-code/core'
+import { Command } from 'commander'
 
 const VERSION = __APP_VERSION__
 
-type RunOptions = {
+interface RunOptions {
   cwd?: string
   env?: NodeJS.ProcessEnv
 }
 
-type WebOptions = {
+interface WebOptions {
   port?: string
 }
 
@@ -28,7 +29,8 @@ function runCommand(command: string, args: string[], options: RunOptions = {}) {
     child.on('close', (code) => {
       if (code === 0) {
         resolvePromise()
-      } else {
+      }
+      else {
         rejectPromise(new Error(`${command} ${args.join(' ')} exited with ${code}`))
       }
     })
