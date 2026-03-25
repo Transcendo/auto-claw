@@ -1,9 +1,13 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ES2022"],
+    "paths": {
+      "@auto-code/core": ["packages/core/src/index.ts"]
+    },
     "types": ["node"],
     "strict": true,
     "skipLibCheck": true,

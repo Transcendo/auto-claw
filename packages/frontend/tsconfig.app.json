@@ -18,7 +18,8 @@
     /* Alias */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@auto-code/core": ["../core/src/index.ts"]
     },
 
     /* Linting */
