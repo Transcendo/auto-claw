@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import process from 'node:process'
 import { buildGreeting } from '@auto-code/core'
+import { initializeDatabase } from '@auto-code/core/db'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
@@ -32,6 +33,15 @@ else if (distDir) {
 }
 
 const port = Number(process.env.PORT ?? 3000)
+
+try {
+  initializeDatabase()
+}
+catch (error) {
+  console.error('[backend] failed to initialize database')
+  console.error(error instanceof Error ? error.message : error)
+  process.exit(1)
+}
 
 console.log(`[backend] listening on http://localhost:${port}`)
 serve({ fetch: app.fetch, port })

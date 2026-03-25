@@ -71,6 +71,25 @@ export function CommandMenu() {
             </CommandGroup>
           ))}
           <CommandSeparator />
+          <CommandGroup heading={sidebarData.footerMenu.title}>
+            {sidebarData.footerMenu.items
+              .filter((item) => item.url)
+              .map((item) => (
+                <CommandItem
+                  key={item.title}
+                  value={item.title}
+                  onSelect={() => {
+                    runCommand(() => navigate({ to: item.url! }))
+                  }}
+                >
+                  <div className='flex size-4 items-center justify-center'>
+                    <ArrowRight className='size-2 text-muted-foreground/80' />
+                  </div>
+                  {item.title}
+                </CommandItem>
+              ))}
+          </CommandGroup>
+          <CommandSeparator />
           <CommandGroup heading='Theme'>
             <CommandItem onSelect={() => runCommand(() => setTheme('light'))}>
               <Sun /> <span>Light</span>

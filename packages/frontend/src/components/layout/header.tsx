@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { ConfigDrawer } from '@/components/config-drawer'
+import { Search } from '@/components/search'
+import { ThemeSwitch } from '@/components/theme-switch'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 
 type HeaderProps = React.HTMLAttributes<HTMLElement> & {
+  actions?: React.ReactNode
   fixed?: boolean
   ref?: React.Ref<HTMLElement>
 }
 
-export function Header({ className, fixed, children, ...props }: HeaderProps) {
+export function Header({ className, fixed, actions, ...props }: HeaderProps) {
   const [offset, setOffset] = useState(0)
 
   useEffect(() => {
@@ -43,7 +47,12 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
       >
         <SidebarTrigger variant='outline' className='max-md:scale-125' />
         <Separator orientation='vertical' className='h-6' />
-        {children}
+        <Search />
+        <div className='ms-auto flex items-center gap-3'>
+          <ThemeSwitch />
+          <ConfigDrawer />
+          {actions}
+        </div>
       </div>
     </header>
   )
