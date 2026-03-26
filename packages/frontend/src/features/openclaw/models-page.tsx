@@ -1,8 +1,9 @@
+import { Outlet } from '@tanstack/react-router'
+import type { OpenClawModelsSection } from '@/types/openclaw'
 import { fetchModelsSection, updateModelsSection } from '@/lib/api'
 import { useEnvironmentContext } from '@/context/environment-provider'
-import type { OpenClawModelsSection } from '@/types/openclaw'
+import { ModelsEditorProvider } from './_internal/builders/models-context'
 import { ConfigSectionPage } from './config-section-page'
-import { SchemaFormEditor } from './schema-form-editor'
 import { validateAgainstSchema } from './utils'
 
 export function ModelsPage() {
@@ -22,15 +23,21 @@ export function ModelsPage() {
       saver={updateModelsSection}
       schema={sectionMetadata.schema}
       rawPath='inmemory://openclaw/models.json'
-      validate={value =>
-        validateAgainstSchema(value, sectionMetadata.schema, 'models')}
-      builder={({ value, onChange }) => (
-        <SchemaFormEditor
-          path='models'
-          schema={sectionMetadata.schema}
+      validate={(value) =>
+        validateAgainstSchema(value, sectionMetadata.schema, 'models')
+      }
+      builder={({ value, onChange, onSave, isSaving, saveVersion }) => (
+        <ModelsEditorProvider
           value={value}
-          onChange={nextValue => onChange(nextValue as OpenClawModelsSection)}
-        />
+          onChange={onChange}
+          onSave={onSave}
+          isSaving={isSaving}
+          schema={sectionMetadata.schema}
+          entries={sectionMetadata.entries}
+          saveVersion={saveVersion}
+        >
+          <Outlet />
+        </ModelsEditorProvider>
       )}
     />
   )

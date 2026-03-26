@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import {
   createContext,
   useContext,
@@ -92,7 +94,9 @@ export function EnvironmentProvider({
 
     if (environments.length === 0) {
       if (selectedEnvironmentId !== null) {
-        setSelectedEnvironmentIdState(null)
+        queueMicrotask(() => {
+          setSelectedEnvironmentIdState(null)
+        })
       }
 
       if (typeof window !== 'undefined') {
@@ -108,7 +112,9 @@ export function EnvironmentProvider({
         ?? environments[0]
 
     if (nextEnvironment && nextEnvironment.id !== selectedEnvironmentId) {
-      setSelectedEnvironmentIdState(nextEnvironment.id)
+      queueMicrotask(() => {
+        setSelectedEnvironmentIdState(nextEnvironment.id)
+      })
     }
   }, [environmentsQuery.data, selectedEnvironmentId])
 

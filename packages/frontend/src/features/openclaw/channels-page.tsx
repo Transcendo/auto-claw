@@ -1,8 +1,9 @@
+import { Outlet } from '@tanstack/react-router'
 import { fetchChannelsSection, updateChannelsSection } from '@/lib/api'
 import { useEnvironmentContext } from '@/context/environment-provider'
 import type { OpenClawChannelsSection } from '@/types/openclaw'
+import { ChannelsEditorProvider } from './_internal/builders/channels-context'
 import { ConfigSectionPage } from './config-section-page'
-import { SchemaFormEditor } from './schema-form-editor'
 import { validateAgainstSchema } from './utils'
 
 export function ChannelsPage() {
@@ -24,13 +25,18 @@ export function ChannelsPage() {
       rawPath='inmemory://openclaw/channels.json'
       validate={value =>
         validateAgainstSchema(value, sectionMetadata.schema, 'channels')}
-      builder={({ value, onChange }) => (
-        <SchemaFormEditor
-          path='channels'
-          schema={sectionMetadata.schema}
+      builder={({ value, onChange, onSave, isSaving, saveVersion }) => (
+        <ChannelsEditorProvider
           value={value}
-          onChange={nextValue => onChange(nextValue as OpenClawChannelsSection)}
-        />
+          onChange={onChange}
+          onSave={onSave}
+          isSaving={isSaving}
+          schema={sectionMetadata.schema}
+          entries={sectionMetadata.entries}
+          saveVersion={saveVersion}
+        >
+          <Outlet />
+        </ChannelsEditorProvider>
       )}
     />
   )

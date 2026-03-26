@@ -28,14 +28,16 @@ export function useAuthenticatedHeader(
     )
   }
 
+  const { setOptions } = context
+
   useEffect(() => {
     const nextOptions = {
       actions: options.actions,
       fixed: options.fixed ?? false,
     }
 
-    context.setOptions(nextOptions)
+    setOptions(nextOptions)
 
-    return () => context.setOptions(defaultAuthenticatedHeaderOptions)
-  }, [context.setOptions, options.actions, options.fixed])
+    return () => setOptions(defaultAuthenticatedHeaderOptions)
+  }, [options.actions, options.fixed, setOptions])
 }

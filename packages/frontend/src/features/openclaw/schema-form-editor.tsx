@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import type { OpenClawJsonSchemaNode } from '@/types/openclaw'
 import { Trash2 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -13,16 +13,18 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { cn } from '@/lib/utils'
-import type { OpenClawJsonSchemaNode } from '@/types/openclaw'
+import {
+  SchemaDynamicObjectEntry,
+  SchemaFieldShell,
+} from '@/features/openclaw/_internal/schema-form/schema-field-shell'
 import {
   buildDefaultValue,
-  formatFieldLabel,
   getAddLabel,
   getNextEntryKey,
   inferSchemaFromValue,
   isPlainObject,
   isSensitivePath,
+  formatFieldLabel,
   normalizeTypes,
 } from './utils'
 
@@ -32,6 +34,14 @@ type SchemaFormEditorProps = {
   value: unknown
   onChange: (value: unknown) => void
   depth?: number
+  layout?: 'default' | 'compact'
+  hiddenPaths?: string[]
+  omitKeys?: string[]
+  descriptionMode?: 'inline' | 'tooltip'
+  showAllFields?: boolean
+  allowRemoveOptionalFields?: boolean
+  compactFieldLayout?: 'stacked' | 'inline'
+  compactBooleanColumns?: boolean
 }
 
 function getActiveType(
@@ -44,7 +54,7 @@ function getActiveType(
     const inferredType = inferSchemaFromValue(value).type
     return typeof inferredType === 'string'
       ? inferredType
-      : inferredType?.[0] ?? 'object'
+      : (inferredType?.[0] ?? 'object')
   }
 
   if (Array.isArray(value) && supportedTypes.includes('array')) {
@@ -82,54 +92,18 @@ function getActiveType(
 
 function shouldUseTextarea(path: string, value: unknown) {
   return (
-    typeof value === 'string'
-    && (value.length > 120
-      || /(prompt|instructions|message|template|summary|system)/i.test(path))
+    typeof value === 'string' &&
+    (value.length > 120 ||
+      /(prompt|instructions|message|template|summary|system)/i.test(path))
   )
 }
 
-function FieldShell({
-  path,
-  label,
-  description,
-  required,
-  depth,
-  action,
-  children,
-}: {
-  path: string
-  label?: string
-  description?: string
-  required?: boolean
-  depth: number
-  action?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <div
-      className={cn(
-        'space-y-3 rounded-xl border border-border/60 bg-card/50 p-4',
-        depth === 0 && 'border-0 bg-transparent p-0'
-      )}
-    >
-      <div className='flex flex-wrap items-center justify-between gap-2'>
-        <div className='space-y-1'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <Label className='text-sm font-semibold'>
-              {formatFieldLabel(label, path)}
-            </Label>
-            {required && <Badge variant='secondary'>Required</Badge>}
-          </div>
-          {description && (
-            <p className='text-sm leading-6 text-muted-foreground'>
-              {description}
-            </p>
-          )}
-        </div>
-        {action}
-      </div>
-      {children}
-    </div>
+function pathIsHidden(path: string, hiddenPaths: string[]) {
+  return hiddenPaths.some(
+    (hiddenPath) =>
+      path === hiddenPath ||
+      path.startsWith(`${hiddenPath}.`) ||
+      path.startsWith(`${hiddenPath}[`)
   )
 }
 
@@ -142,6 +116,14 @@ function DynamicObjectEntry({
   onChange,
   onRemove,
   depth,
+  layout,
+  hiddenPaths,
+  omitKeys,
+  descriptionMode,
+  showAllFields,
+  allowRemoveOptionalFields,
+  compactFieldLayout,
+  compactBooleanColumns,
 }: {
   entryKey: string
   path: string
@@ -151,56 +133,38 @@ function DynamicObjectEntry({
   onChange: (nextValue: unknown) => void
   onRemove: () => void
   depth: number
+  layout: 'default' | 'compact'
+  hiddenPaths: string[]
+  omitKeys: string[]
+  descriptionMode: 'inline' | 'tooltip'
+  showAllFields: boolean
+  allowRemoveOptionalFields: boolean
+  compactFieldLayout: 'stacked' | 'inline'
+  compactBooleanColumns: boolean
 }) {
-  const [draftKey, setDraftKey] = useState(entryKey)
-
-  useEffect(() => {
-    setDraftKey(entryKey)
-  }, [entryKey])
-
-  const handleCommitRename = () => {
-    const trimmed = draftKey.trim()
-    if (trimmed && trimmed !== entryKey) {
-      onRename(trimmed)
-    }
-    else {
-      setDraftKey(entryKey)
-    }
-  }
-
   return (
-    <div className='space-y-3 rounded-xl border border-border/60 bg-background/70 p-4'>
-      <div className='flex items-center gap-3'>
-        <Input
-          value={draftKey}
-          onChange={event => setDraftKey(event.target.value)}
-          onBlur={handleCommitRename}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              handleCommitRename()
-            }
-          }}
-          className='font-medium'
-        />
-        <Button
-          type='button'
-          variant='ghost'
-          size='icon'
-          onClick={onRemove}
-          aria-label='Remove item'
-        >
-          <Trash2 className='size-4' />
-        </Button>
-      </div>
+    <SchemaDynamicObjectEntry
+      entryKey={entryKey}
+      layout={layout}
+      onRemove={onRemove}
+      onRename={onRename}
+    >
       <SchemaFormEditor
         path={path}
         schema={schema}
         value={value}
         onChange={onChange}
         depth={depth + 1}
+        layout={layout}
+        hiddenPaths={hiddenPaths}
+        omitKeys={omitKeys}
+        descriptionMode={descriptionMode}
+        showAllFields={showAllFields}
+        allowRemoveOptionalFields={allowRemoveOptionalFields}
+        compactFieldLayout={compactFieldLayout}
+        compactBooleanColumns={compactBooleanColumns}
       />
-    </div>
+    </SchemaDynamicObjectEntry>
   )
 }
 
@@ -210,86 +174,136 @@ function ObjectEditor({
   value,
   onChange,
   depth,
+  layout,
+  hiddenPaths,
+  omitKeys,
+  descriptionMode,
+  showAllFields,
+  allowRemoveOptionalFields,
+  compactFieldLayout,
+  compactBooleanColumns,
 }: Required<SchemaFormEditorProps>) {
   const objectValue = isPlainObject(value) ? value : {}
   const fixedProperties = schema.properties ?? {}
   const requiredKeys = new Set(schema.required ?? [])
-  const visibleFixedKeys = Object.keys(fixedProperties).filter(
-    key => requiredKeys.has(key) || key in objectValue
-  )
-  const missingFixedKeys = Object.keys(fixedProperties).filter(
-    key => !requiredKeys.has(key) && !(key in objectValue)
-  )
-  const dynamicEntries = Object.entries(objectValue).filter(
-    ([key]) => !(key in fixedProperties)
-  )
+  const visibleFixedKeys = Object.keys(fixedProperties).filter((key) => {
+    const nextPath = `${path}.${key}`
+    if (omitKeys.includes(key) || pathIsHidden(nextPath, hiddenPaths)) {
+      return false
+    }
+
+    return showAllFields || requiredKeys.has(key) || key in objectValue
+  })
+  const missingFixedKeys = showAllFields
+    ? []
+    : Object.keys(fixedProperties).filter((key) => {
+        const nextPath = `${path}.${key}`
+        if (omitKeys.includes(key) || pathIsHidden(nextPath, hiddenPaths)) {
+          return false
+        }
+
+        return !requiredKeys.has(key) && !(key in objectValue)
+      })
+  const dynamicEntries = Object.entries(objectValue).filter(([key]) => {
+    const nextPath = `${path}.${key}`
+    return !(key in fixedProperties) && !pathIsHidden(nextPath, hiddenPaths)
+  })
   const [pendingField, setPendingField] = useState('')
 
-  const addableDynamicSchema
-    = schema.additionalProperties === true
+  const addableDynamicSchema =
+    schema.additionalProperties === true
       ? undefined
       : schema.additionalProperties === false
         ? undefined
         : schema.additionalProperties
 
-  const hasActions
-    = missingFixedKeys.length > 0
-      || schema.additionalProperties === true
-      || Boolean(addableDynamicSchema)
+  const hasActions =
+    (!showAllFields && missingFixedKeys.length > 0) ||
+    schema.additionalProperties === true ||
+    Boolean(addableDynamicSchema)
 
   return (
-    <div className='space-y-4'>
+    <div
+      className={cn(
+        'space-y-4',
+        layout === 'compact' && 'space-y-3',
+        layout === 'compact' &&
+          compactBooleanColumns &&
+          'grid grid-cols-1 gap-x-4 gap-y-0 xl:grid-cols-2'
+      )}
+    >
       {visibleFixedKeys.map((key) => {
         const propertySchema = fixedProperties[key]
+        const propertyTypes = normalizeTypes(propertySchema?.type)
+        const isBooleanField = propertyTypes.includes('boolean')
 
         return (
-          <FieldShell
+          <div
             key={`${path}.${key}`}
-            path={`${path}.${key}`}
-            label={propertySchema.title}
-            description={propertySchema.description}
-            required={requiredKeys.has(key)}
-            depth={depth}
-            action={
-              !requiredKeys.has(key) && key in objectValue
-                ? (
-                    <Button
-                      type='button'
-                      variant='ghost'
-                      size='icon'
-                      onClick={() => {
-                        const nextValue = { ...objectValue }
-                        delete nextValue[key]
-                        onChange(nextValue)
-                      }}
-                      aria-label={`Remove ${key}`}
-                    >
-                      <Trash2 className='size-4' />
-                    </Button>
-                  )
-                : undefined
-            }
+            className={cn(
+              layout === 'compact' &&
+                compactBooleanColumns &&
+                (isBooleanField ? 'xl:col-span-1' : 'xl:col-span-2')
+            )}
           >
-            <SchemaFormEditor
+            <SchemaFieldShell
               path={`${path}.${key}`}
-              schema={propertySchema}
-              value={objectValue[key]}
-              onChange={(nextPropertyValue) => {
-                onChange({
-                  ...objectValue,
-                  [key]: nextPropertyValue,
-                })
-              }}
-              depth={depth + 1}
-            />
-          </FieldShell>
+              label={propertySchema.title}
+              description={propertySchema.description}
+              required={requiredKeys.has(key)}
+              depth={depth}
+              layout={layout}
+              compactFieldLayout={compactFieldLayout}
+              descriptionMode={descriptionMode}
+              action={
+                allowRemoveOptionalFields &&
+                !requiredKeys.has(key) &&
+                key in objectValue ? (
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => {
+                      const nextValue = { ...objectValue }
+                      delete nextValue[key]
+                      onChange(nextValue)
+                    }}
+                    aria-label={`Remove ${key}`}
+                  >
+                    <Trash2 className='size-4' />
+                  </Button>
+                ) : undefined
+              }
+            >
+              <SchemaFormEditor
+                path={`${path}.${key}`}
+                schema={propertySchema}
+                value={objectValue[key]}
+                onChange={(nextPropertyValue) => {
+                  onChange({
+                    ...objectValue,
+                    [key]: nextPropertyValue,
+                  })
+                }}
+                depth={depth + 1}
+                layout={layout}
+                hiddenPaths={hiddenPaths}
+                omitKeys={omitKeys}
+                descriptionMode={descriptionMode}
+                showAllFields={showAllFields}
+                allowRemoveOptionalFields={allowRemoveOptionalFields}
+                compactFieldLayout={compactFieldLayout}
+                compactBooleanColumns={compactBooleanColumns}
+              />
+            </SchemaFieldShell>
+          </div>
         )
       })}
 
       {dynamicEntries.map(([entryKey, entryValue]) => {
         const nextPath = `${path}.${entryKey}`
-        const entrySchema
-          = addableDynamicSchema === undefined
+        const entrySchema =
+          addableDynamicSchema === undefined
             ? inferSchemaFromValue(entryValue)
             : addableDynamicSchema
 
@@ -301,6 +315,14 @@ function ObjectEditor({
             schema={entrySchema}
             value={entryValue}
             depth={depth}
+            layout={layout}
+            hiddenPaths={hiddenPaths}
+            omitKeys={omitKeys}
+            descriptionMode={descriptionMode}
+            showAllFields={showAllFields}
+            allowRemoveOptionalFields={allowRemoveOptionalFields}
+            compactFieldLayout={compactFieldLayout}
+            compactBooleanColumns={compactBooleanColumns}
             onRename={(nextKey) => {
               if (!nextKey || nextKey === entryKey || nextKey in objectValue) {
                 return
@@ -327,7 +349,13 @@ function ObjectEditor({
       })}
 
       {hasActions && (
-        <div className='flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border/70 bg-background/50 p-4'>
+        <div
+          className={cn(
+            'flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border/70 bg-background/50 p-4',
+            layout === 'compact' && 'rounded-lg px-3 py-2',
+            layout === 'compact' && compactBooleanColumns && 'xl:col-span-2'
+          )}
+        >
           {missingFixedKeys.length > 0 && (
             <Select
               value={pendingField}
@@ -343,9 +371,12 @@ function ObjectEditor({
                 <SelectValue placeholder='Add field' />
               </SelectTrigger>
               <SelectContent>
-                {missingFixedKeys.map(key => (
+                {missingFixedKeys.map((key) => (
                   <SelectItem key={key} value={key}>
-                    {formatFieldLabel(fixedProperties[key]?.title, `${path}.${key}`)}
+                    {formatFieldLabel(
+                      fixedProperties[key]?.title,
+                      `${path}.${key}`
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -380,25 +411,38 @@ function ArrayEditor({
   value,
   onChange,
   depth,
+  layout,
+  hiddenPaths,
+  omitKeys,
+  descriptionMode,
+  showAllFields,
+  allowRemoveOptionalFields,
+  compactFieldLayout,
+  compactBooleanColumns,
 }: Required<SchemaFormEditorProps>) {
   const arrayValue = Array.isArray(value) ? value : []
   const itemSchema = schema.items ?? {}
 
   return (
-    <div className='space-y-4'>
+    <div className={cn('space-y-4', layout === 'compact' && 'space-y-3')}>
       {arrayValue.map((itemValue, index) => (
-        <FieldShell
+        <SchemaFieldShell
           key={`${path}[${index}]`}
           path={`${path}[${index}]`}
           label={`Item ${index + 1}`}
           depth={depth}
+          layout={layout}
+          compactFieldLayout={compactFieldLayout}
+          descriptionMode={descriptionMode}
           action={
             <Button
               type='button'
               variant='ghost'
               size='icon'
               onClick={() => {
-                const nextValue = arrayValue.filter((_, itemIndex) => itemIndex !== index)
+                const nextValue = arrayValue.filter(
+                  (_, itemIndex) => itemIndex !== index
+                )
                 onChange(nextValue)
               }}
               aria-label={`Remove item ${index + 1}`}
@@ -418,11 +462,24 @@ function ArrayEditor({
               onChange(nextValue)
             }}
             depth={depth + 1}
+            layout={layout}
+            hiddenPaths={hiddenPaths}
+            omitKeys={omitKeys}
+            descriptionMode={descriptionMode}
+            showAllFields={showAllFields}
+            allowRemoveOptionalFields={allowRemoveOptionalFields}
+            compactFieldLayout={compactFieldLayout}
+            compactBooleanColumns={compactBooleanColumns}
           />
-        </FieldShell>
+        </SchemaFieldShell>
       ))}
 
-      <div className='rounded-xl border border-dashed border-border/70 bg-background/50 p-4'>
+      <div
+        className={cn(
+          'rounded-xl border border-dashed border-border/70 bg-background/50 p-4',
+          layout === 'compact' && 'rounded-lg px-3 py-2'
+        )}
+      >
         <Button
           type='button'
           variant='outline'
@@ -442,10 +499,16 @@ function PrimitiveEditor({
   schema,
   value,
   onChange,
-}: Required<Pick<SchemaFormEditorProps, 'path' | 'schema' | 'value' | 'onChange'>>) {
+  layout,
+}: Required<
+  Pick<
+    SchemaFormEditorProps,
+    'path' | 'schema' | 'value' | 'onChange' | 'layout'
+  >
+>) {
   if (schema.enum && schema.enum.length > 0) {
-    const currentValue
-      = typeof value === 'string' || typeof value === 'number'
+    const currentValue =
+      typeof value === 'string' || typeof value === 'number'
         ? String(value)
         : ''
 
@@ -453,15 +516,17 @@ function PrimitiveEditor({
       <Select
         value={currentValue}
         onValueChange={(nextValue) => {
-          const resolved = schema.enum?.find(candidate => String(candidate) === nextValue)
+          const resolved = schema.enum?.find(
+            (candidate) => String(candidate) === nextValue
+          )
           onChange(resolved ?? nextValue)
         }}
       >
-        <SelectTrigger>
+        <SelectTrigger className='w-full'>
           <SelectValue placeholder='Select a value' />
         </SelectTrigger>
         <SelectContent>
-          {schema.enum.map(option => (
+          {schema.enum.map((option) => (
             <SelectItem key={String(option)} value={String(option)}>
               {String(option)}
             </SelectItem>
@@ -473,12 +538,26 @@ function PrimitiveEditor({
 
   const activeType = getActiveType(schema, value)
   if (activeType === 'boolean') {
+    if (layout === 'compact') {
+      return (
+        <div className='flex justify-end py-1'>
+          <Switch
+            checked={value === true}
+            onCheckedChange={(checked) => onChange(checked)}
+          />
+        </div>
+      )
+    }
+
     return (
       <div className='flex items-center justify-between rounded-lg border border-border/60 px-4 py-3'>
         <div className='text-sm text-muted-foreground'>
           Toggle this value on or off.
         </div>
-        <Switch checked={value === true} onCheckedChange={checked => onChange(checked)} />
+        <Switch
+          checked={value === true}
+          onCheckedChange={(checked) => onChange(checked)}
+        />
       </div>
     )
   }
@@ -511,8 +590,8 @@ function PrimitiveEditor({
     return (
       <Textarea
         value={stringValue}
-        onChange={event => onChange(event.target.value)}
-        className='min-h-32'
+        onChange={(event) => onChange(event.target.value)}
+        className={cn(layout === 'compact' ? 'min-h-24' : 'min-h-32')}
       />
     )
   }
@@ -521,7 +600,7 @@ function PrimitiveEditor({
     <Input
       type={inputType}
       value={stringValue}
-      onChange={event => onChange(event.target.value)}
+      onChange={(event) => onChange(event.target.value)}
     />
   )
 }
@@ -532,6 +611,14 @@ export function SchemaFormEditor({
   value,
   onChange,
   depth = 0,
+  layout = 'default',
+  hiddenPaths = [],
+  omitKeys = [],
+  descriptionMode = 'inline',
+  showAllFields = false,
+  allowRemoveOptionalFields = true,
+  compactFieldLayout = 'stacked',
+  compactBooleanColumns = false,
 }: SchemaFormEditorProps) {
   const resolvedSchema = useMemo(() => {
     if (schema) {
@@ -553,6 +640,14 @@ export function SchemaFormEditor({
           value={value}
           onChange={onChange}
           depth={depth}
+          layout={layout}
+          hiddenPaths={hiddenPaths}
+          omitKeys={omitKeys}
+          descriptionMode={descriptionMode}
+          showAllFields={showAllFields}
+          allowRemoveOptionalFields={allowRemoveOptionalFields}
+          compactFieldLayout={compactFieldLayout}
+          compactBooleanColumns={compactBooleanColumns}
         />
       )
     }
@@ -565,6 +660,14 @@ export function SchemaFormEditor({
           value={value}
           onChange={onChange}
           depth={depth}
+          layout={layout}
+          hiddenPaths={hiddenPaths}
+          omitKeys={omitKeys}
+          descriptionMode={descriptionMode}
+          showAllFields={showAllFields}
+          allowRemoveOptionalFields={allowRemoveOptionalFields}
+          compactFieldLayout={compactFieldLayout}
+          compactBooleanColumns={compactBooleanColumns}
         />
       )
     }
@@ -575,6 +678,7 @@ export function SchemaFormEditor({
         schema={resolvedSchema}
         value={value}
         onChange={onChange}
+        layout={layout}
       />
     )
   })()
@@ -584,7 +688,7 @@ export function SchemaFormEditor({
   }
 
   return (
-    <div className='space-y-3'>
+    <div className={cn('space-y-3', layout === 'compact' && 'space-y-2')}>
       <div className='flex flex-wrap items-center justify-end gap-3'>
         <Select
           value={activeType}
@@ -596,7 +700,7 @@ export function SchemaFormEditor({
             <SelectValue placeholder='Value type' />
           </SelectTrigger>
           <SelectContent>
-            {typeOptions.map(type => (
+            {typeOptions.map((type) => (
               <SelectItem key={type} value={type}>
                 {formatFieldLabel(undefined, type)}
               </SelectItem>

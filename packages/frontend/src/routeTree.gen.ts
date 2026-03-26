@@ -20,6 +20,21 @@ import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
 import { Route as errors403RouteImport } from './routes/(errors)/403'
 import { Route as errors401RouteImport } from './routes/(errors)/401'
+import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models.index'
+import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels.index'
+import { Route as AuthenticatedAgentsIndexRouteImport } from './routes/_authenticated/agents.index'
+import { Route as AuthenticatedAgentsDefaultsRouteImport } from './routes/_authenticated/agents.defaults'
+import { Route as AuthenticatedModelsProviderProviderIdRouteImport } from './routes/_authenticated/models.provider.$providerId'
+import { Route as AuthenticatedChannelsChannelChannelIdRouteImport } from './routes/_authenticated/channels.channel.$channelId'
+import { Route as AuthenticatedAgentsAgentAgentIdRouteImport } from './routes/_authenticated/agents.agent.$agentId'
+import { Route as AuthenticatedModelsProviderProviderIdIndexRouteImport } from './routes/_authenticated/models.provider.$providerId.index'
+import { Route as AuthenticatedChannelsChannelChannelIdIndexRouteImport } from './routes/_authenticated/channels.channel.$channelId.index'
+import { Route as AuthenticatedAgentsAgentAgentIdIndexRouteImport } from './routes/_authenticated/agents.agent.$agentId.index'
+import { Route as AuthenticatedAgentsAgentAgentIdBindingsRouteImport } from './routes/_authenticated/agents.agent.$agentId.bindings'
+import { Route as AuthenticatedAgentsAgentAgentIdBindingsIndexRouteImport } from './routes/_authenticated/agents.agent.$agentId.bindings.index'
+import { Route as AuthenticatedModelsProviderProviderIdModelModelIdRouteImport } from './routes/_authenticated/models.provider.$providerId.model.$modelId'
+import { Route as AuthenticatedChannelsChannelChannelIdAccountAccountIdRouteImport } from './routes/_authenticated/channels.channel.$channelId.account.$accountId'
+import { Route as AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRouteImport } from './routes/_authenticated/agents.agent.$agentId.bindings.$bindingIndex'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -75,6 +90,96 @@ const errors401Route = errors401RouteImport.update({
   path: '/401',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedModelsIndexRoute =
+  AuthenticatedModelsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedModelsRoute,
+  } as any)
+const AuthenticatedChannelsIndexRoute =
+  AuthenticatedChannelsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedChannelsRoute,
+  } as any)
+const AuthenticatedAgentsIndexRoute =
+  AuthenticatedAgentsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAgentsRoute,
+  } as any)
+const AuthenticatedAgentsDefaultsRoute =
+  AuthenticatedAgentsDefaultsRouteImport.update({
+    id: '/defaults',
+    path: '/defaults',
+    getParentRoute: () => AuthenticatedAgentsRoute,
+  } as any)
+const AuthenticatedModelsProviderProviderIdRoute =
+  AuthenticatedModelsProviderProviderIdRouteImport.update({
+    id: '/provider/$providerId',
+    path: '/provider/$providerId',
+    getParentRoute: () => AuthenticatedModelsRoute,
+  } as any)
+const AuthenticatedChannelsChannelChannelIdRoute =
+  AuthenticatedChannelsChannelChannelIdRouteImport.update({
+    id: '/channel/$channelId',
+    path: '/channel/$channelId',
+    getParentRoute: () => AuthenticatedChannelsRoute,
+  } as any)
+const AuthenticatedAgentsAgentAgentIdRoute =
+  AuthenticatedAgentsAgentAgentIdRouteImport.update({
+    id: '/agent/$agentId',
+    path: '/agent/$agentId',
+    getParentRoute: () => AuthenticatedAgentsRoute,
+  } as any)
+const AuthenticatedModelsProviderProviderIdIndexRoute =
+  AuthenticatedModelsProviderProviderIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedModelsProviderProviderIdRoute,
+  } as any)
+const AuthenticatedChannelsChannelChannelIdIndexRoute =
+  AuthenticatedChannelsChannelChannelIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedChannelsChannelChannelIdRoute,
+  } as any)
+const AuthenticatedAgentsAgentAgentIdIndexRoute =
+  AuthenticatedAgentsAgentAgentIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAgentsAgentAgentIdRoute,
+  } as any)
+const AuthenticatedAgentsAgentAgentIdBindingsRoute =
+  AuthenticatedAgentsAgentAgentIdBindingsRouteImport.update({
+    id: '/bindings',
+    path: '/bindings',
+    getParentRoute: () => AuthenticatedAgentsAgentAgentIdRoute,
+  } as any)
+const AuthenticatedAgentsAgentAgentIdBindingsIndexRoute =
+  AuthenticatedAgentsAgentAgentIdBindingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAgentsAgentAgentIdBindingsRoute,
+  } as any)
+const AuthenticatedModelsProviderProviderIdModelModelIdRoute =
+  AuthenticatedModelsProviderProviderIdModelModelIdRouteImport.update({
+    id: '/model/$modelId',
+    path: '/model/$modelId',
+    getParentRoute: () => AuthenticatedModelsProviderProviderIdRoute,
+  } as any)
+const AuthenticatedChannelsChannelChannelIdAccountAccountIdRoute =
+  AuthenticatedChannelsChannelChannelIdAccountAccountIdRouteImport.update({
+    id: '/account/$accountId',
+    path: '/account/$accountId',
+    getParentRoute: () => AuthenticatedChannelsChannelChannelIdRoute,
+  } as any)
+const AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRoute =
+  AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRouteImport.update({
+    id: '/$bindingIndex',
+    path: '/$bindingIndex',
+    getParentRoute: () => AuthenticatedAgentsAgentAgentIdBindingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -84,9 +189,24 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-  '/agents': typeof AuthenticatedAgentsRoute
-  '/channels': typeof AuthenticatedChannelsRoute
-  '/models': typeof AuthenticatedModelsRoute
+  '/agents': typeof AuthenticatedAgentsRouteWithChildren
+  '/channels': typeof AuthenticatedChannelsRouteWithChildren
+  '/models': typeof AuthenticatedModelsRouteWithChildren
+  '/agents/defaults': typeof AuthenticatedAgentsDefaultsRoute
+  '/agents/': typeof AuthenticatedAgentsIndexRoute
+  '/channels/': typeof AuthenticatedChannelsIndexRoute
+  '/models/': typeof AuthenticatedModelsIndexRoute
+  '/agents/agent/$agentId': typeof AuthenticatedAgentsAgentAgentIdRouteWithChildren
+  '/channels/channel/$channelId': typeof AuthenticatedChannelsChannelChannelIdRouteWithChildren
+  '/models/provider/$providerId': typeof AuthenticatedModelsProviderProviderIdRouteWithChildren
+  '/agents/agent/$agentId/bindings': typeof AuthenticatedAgentsAgentAgentIdBindingsRouteWithChildren
+  '/agents/agent/$agentId/': typeof AuthenticatedAgentsAgentAgentIdIndexRoute
+  '/channels/channel/$channelId/': typeof AuthenticatedChannelsChannelChannelIdIndexRoute
+  '/models/provider/$providerId/': typeof AuthenticatedModelsProviderProviderIdIndexRoute
+  '/agents/agent/$agentId/bindings/$bindingIndex': typeof AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRoute
+  '/channels/channel/$channelId/account/$accountId': typeof AuthenticatedChannelsChannelChannelIdAccountAccountIdRoute
+  '/models/provider/$providerId/model/$modelId': typeof AuthenticatedModelsProviderProviderIdModelModelIdRoute
+  '/agents/agent/$agentId/bindings/': typeof AuthenticatedAgentsAgentAgentIdBindingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
@@ -95,10 +215,18 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-  '/agents': typeof AuthenticatedAgentsRoute
-  '/channels': typeof AuthenticatedChannelsRoute
-  '/models': typeof AuthenticatedModelsRoute
   '/': typeof AuthenticatedIndexRoute
+  '/agents/defaults': typeof AuthenticatedAgentsDefaultsRoute
+  '/agents': typeof AuthenticatedAgentsIndexRoute
+  '/channels': typeof AuthenticatedChannelsIndexRoute
+  '/models': typeof AuthenticatedModelsIndexRoute
+  '/agents/agent/$agentId': typeof AuthenticatedAgentsAgentAgentIdIndexRoute
+  '/channels/channel/$channelId': typeof AuthenticatedChannelsChannelChannelIdIndexRoute
+  '/models/provider/$providerId': typeof AuthenticatedModelsProviderProviderIdIndexRoute
+  '/agents/agent/$agentId/bindings/$bindingIndex': typeof AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRoute
+  '/channels/channel/$channelId/account/$accountId': typeof AuthenticatedChannelsChannelChannelIdAccountAccountIdRoute
+  '/models/provider/$providerId/model/$modelId': typeof AuthenticatedModelsProviderProviderIdModelModelIdRoute
+  '/agents/agent/$agentId/bindings': typeof AuthenticatedAgentsAgentAgentIdBindingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,10 +237,25 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
-  '/_authenticated/agents': typeof AuthenticatedAgentsRoute
-  '/_authenticated/channels': typeof AuthenticatedChannelsRoute
-  '/_authenticated/models': typeof AuthenticatedModelsRoute
+  '/_authenticated/agents': typeof AuthenticatedAgentsRouteWithChildren
+  '/_authenticated/channels': typeof AuthenticatedChannelsRouteWithChildren
+  '/_authenticated/models': typeof AuthenticatedModelsRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/agents/defaults': typeof AuthenticatedAgentsDefaultsRoute
+  '/_authenticated/agents/': typeof AuthenticatedAgentsIndexRoute
+  '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
+  '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
+  '/_authenticated/agents/agent/$agentId': typeof AuthenticatedAgentsAgentAgentIdRouteWithChildren
+  '/_authenticated/channels/channel/$channelId': typeof AuthenticatedChannelsChannelChannelIdRouteWithChildren
+  '/_authenticated/models/provider/$providerId': typeof AuthenticatedModelsProviderProviderIdRouteWithChildren
+  '/_authenticated/agents/agent/$agentId/bindings': typeof AuthenticatedAgentsAgentAgentIdBindingsRouteWithChildren
+  '/_authenticated/agents/agent/$agentId/': typeof AuthenticatedAgentsAgentAgentIdIndexRoute
+  '/_authenticated/channels/channel/$channelId/': typeof AuthenticatedChannelsChannelChannelIdIndexRoute
+  '/_authenticated/models/provider/$providerId/': typeof AuthenticatedModelsProviderProviderIdIndexRoute
+  '/_authenticated/agents/agent/$agentId/bindings/$bindingIndex': typeof AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRoute
+  '/_authenticated/channels/channel/$channelId/account/$accountId': typeof AuthenticatedChannelsChannelChannelIdAccountAccountIdRoute
+  '/_authenticated/models/provider/$providerId/model/$modelId': typeof AuthenticatedModelsProviderProviderIdModelModelIdRoute
+  '/_authenticated/agents/agent/$agentId/bindings/': typeof AuthenticatedAgentsAgentAgentIdBindingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,6 +270,21 @@ export interface FileRouteTypes {
     | '/agents'
     | '/channels'
     | '/models'
+    | '/agents/defaults'
+    | '/agents/'
+    | '/channels/'
+    | '/models/'
+    | '/agents/agent/$agentId'
+    | '/channels/channel/$channelId'
+    | '/models/provider/$providerId'
+    | '/agents/agent/$agentId/bindings'
+    | '/agents/agent/$agentId/'
+    | '/channels/channel/$channelId/'
+    | '/models/provider/$providerId/'
+    | '/agents/agent/$agentId/bindings/$bindingIndex'
+    | '/channels/channel/$channelId/account/$accountId'
+    | '/models/provider/$providerId/model/$modelId'
+    | '/agents/agent/$agentId/bindings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/settings'
@@ -135,10 +293,18 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/'
+    | '/agents/defaults'
     | '/agents'
     | '/channels'
     | '/models'
-    | '/'
+    | '/agents/agent/$agentId'
+    | '/channels/channel/$channelId'
+    | '/models/provider/$providerId'
+    | '/agents/agent/$agentId/bindings/$bindingIndex'
+    | '/channels/channel/$channelId/account/$accountId'
+    | '/models/provider/$providerId/model/$modelId'
+    | '/agents/agent/$agentId/bindings'
   id:
     | '__root__'
     | '/_authenticated'
@@ -152,6 +318,21 @@ export interface FileRouteTypes {
     | '/_authenticated/channels'
     | '/_authenticated/models'
     | '/_authenticated/'
+    | '/_authenticated/agents/defaults'
+    | '/_authenticated/agents/'
+    | '/_authenticated/channels/'
+    | '/_authenticated/models/'
+    | '/_authenticated/agents/agent/$agentId'
+    | '/_authenticated/channels/channel/$channelId'
+    | '/_authenticated/models/provider/$providerId'
+    | '/_authenticated/agents/agent/$agentId/bindings'
+    | '/_authenticated/agents/agent/$agentId/'
+    | '/_authenticated/channels/channel/$channelId/'
+    | '/_authenticated/models/provider/$providerId/'
+    | '/_authenticated/agents/agent/$agentId/bindings/$bindingIndex'
+    | '/_authenticated/channels/channel/$channelId/account/$accountId'
+    | '/_authenticated/models/provider/$providerId/model/$modelId'
+    | '/_authenticated/agents/agent/$agentId/bindings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -243,20 +424,243 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof errors401RouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/models/': {
+      id: '/_authenticated/models/'
+      path: '/'
+      fullPath: '/models/'
+      preLoaderRoute: typeof AuthenticatedModelsIndexRouteImport
+      parentRoute: typeof AuthenticatedModelsRoute
+    }
+    '/_authenticated/channels/': {
+      id: '/_authenticated/channels/'
+      path: '/'
+      fullPath: '/channels/'
+      preLoaderRoute: typeof AuthenticatedChannelsIndexRouteImport
+      parentRoute: typeof AuthenticatedChannelsRoute
+    }
+    '/_authenticated/agents/': {
+      id: '/_authenticated/agents/'
+      path: '/'
+      fullPath: '/agents/'
+      preLoaderRoute: typeof AuthenticatedAgentsIndexRouteImport
+      parentRoute: typeof AuthenticatedAgentsRoute
+    }
+    '/_authenticated/agents/defaults': {
+      id: '/_authenticated/agents/defaults'
+      path: '/defaults'
+      fullPath: '/agents/defaults'
+      preLoaderRoute: typeof AuthenticatedAgentsDefaultsRouteImport
+      parentRoute: typeof AuthenticatedAgentsRoute
+    }
+    '/_authenticated/models/provider/$providerId': {
+      id: '/_authenticated/models/provider/$providerId'
+      path: '/provider/$providerId'
+      fullPath: '/models/provider/$providerId'
+      preLoaderRoute: typeof AuthenticatedModelsProviderProviderIdRouteImport
+      parentRoute: typeof AuthenticatedModelsRoute
+    }
+    '/_authenticated/channels/channel/$channelId': {
+      id: '/_authenticated/channels/channel/$channelId'
+      path: '/channel/$channelId'
+      fullPath: '/channels/channel/$channelId'
+      preLoaderRoute: typeof AuthenticatedChannelsChannelChannelIdRouteImport
+      parentRoute: typeof AuthenticatedChannelsRoute
+    }
+    '/_authenticated/agents/agent/$agentId': {
+      id: '/_authenticated/agents/agent/$agentId'
+      path: '/agent/$agentId'
+      fullPath: '/agents/agent/$agentId'
+      preLoaderRoute: typeof AuthenticatedAgentsAgentAgentIdRouteImport
+      parentRoute: typeof AuthenticatedAgentsRoute
+    }
+    '/_authenticated/models/provider/$providerId/': {
+      id: '/_authenticated/models/provider/$providerId/'
+      path: '/'
+      fullPath: '/models/provider/$providerId/'
+      preLoaderRoute: typeof AuthenticatedModelsProviderProviderIdIndexRouteImport
+      parentRoute: typeof AuthenticatedModelsProviderProviderIdRoute
+    }
+    '/_authenticated/channels/channel/$channelId/': {
+      id: '/_authenticated/channels/channel/$channelId/'
+      path: '/'
+      fullPath: '/channels/channel/$channelId/'
+      preLoaderRoute: typeof AuthenticatedChannelsChannelChannelIdIndexRouteImport
+      parentRoute: typeof AuthenticatedChannelsChannelChannelIdRoute
+    }
+    '/_authenticated/agents/agent/$agentId/': {
+      id: '/_authenticated/agents/agent/$agentId/'
+      path: '/'
+      fullPath: '/agents/agent/$agentId/'
+      preLoaderRoute: typeof AuthenticatedAgentsAgentAgentIdIndexRouteImport
+      parentRoute: typeof AuthenticatedAgentsAgentAgentIdRoute
+    }
+    '/_authenticated/agents/agent/$agentId/bindings': {
+      id: '/_authenticated/agents/agent/$agentId/bindings'
+      path: '/bindings'
+      fullPath: '/agents/agent/$agentId/bindings'
+      preLoaderRoute: typeof AuthenticatedAgentsAgentAgentIdBindingsRouteImport
+      parentRoute: typeof AuthenticatedAgentsAgentAgentIdRoute
+    }
+    '/_authenticated/agents/agent/$agentId/bindings/': {
+      id: '/_authenticated/agents/agent/$agentId/bindings/'
+      path: '/'
+      fullPath: '/agents/agent/$agentId/bindings/'
+      preLoaderRoute: typeof AuthenticatedAgentsAgentAgentIdBindingsIndexRouteImport
+      parentRoute: typeof AuthenticatedAgentsAgentAgentIdBindingsRoute
+    }
+    '/_authenticated/models/provider/$providerId/model/$modelId': {
+      id: '/_authenticated/models/provider/$providerId/model/$modelId'
+      path: '/model/$modelId'
+      fullPath: '/models/provider/$providerId/model/$modelId'
+      preLoaderRoute: typeof AuthenticatedModelsProviderProviderIdModelModelIdRouteImport
+      parentRoute: typeof AuthenticatedModelsProviderProviderIdRoute
+    }
+    '/_authenticated/channels/channel/$channelId/account/$accountId': {
+      id: '/_authenticated/channels/channel/$channelId/account/$accountId'
+      path: '/account/$accountId'
+      fullPath: '/channels/channel/$channelId/account/$accountId'
+      preLoaderRoute: typeof AuthenticatedChannelsChannelChannelIdAccountAccountIdRouteImport
+      parentRoute: typeof AuthenticatedChannelsChannelChannelIdRoute
+    }
+    '/_authenticated/agents/agent/$agentId/bindings/$bindingIndex': {
+      id: '/_authenticated/agents/agent/$agentId/bindings/$bindingIndex'
+      path: '/$bindingIndex'
+      fullPath: '/agents/agent/$agentId/bindings/$bindingIndex'
+      preLoaderRoute: typeof AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRouteImport
+      parentRoute: typeof AuthenticatedAgentsAgentAgentIdBindingsRoute
+    }
   }
 }
 
+interface AuthenticatedAgentsAgentAgentIdBindingsRouteChildren {
+  AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRoute: typeof AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRoute
+  AuthenticatedAgentsAgentAgentIdBindingsIndexRoute: typeof AuthenticatedAgentsAgentAgentIdBindingsIndexRoute
+}
+
+const AuthenticatedAgentsAgentAgentIdBindingsRouteChildren: AuthenticatedAgentsAgentAgentIdBindingsRouteChildren =
+  {
+    AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRoute:
+      AuthenticatedAgentsAgentAgentIdBindingsBindingIndexRoute,
+    AuthenticatedAgentsAgentAgentIdBindingsIndexRoute:
+      AuthenticatedAgentsAgentAgentIdBindingsIndexRoute,
+  }
+
+const AuthenticatedAgentsAgentAgentIdBindingsRouteWithChildren =
+  AuthenticatedAgentsAgentAgentIdBindingsRoute._addFileChildren(
+    AuthenticatedAgentsAgentAgentIdBindingsRouteChildren,
+  )
+
+interface AuthenticatedAgentsAgentAgentIdRouteChildren {
+  AuthenticatedAgentsAgentAgentIdBindingsRoute: typeof AuthenticatedAgentsAgentAgentIdBindingsRouteWithChildren
+  AuthenticatedAgentsAgentAgentIdIndexRoute: typeof AuthenticatedAgentsAgentAgentIdIndexRoute
+}
+
+const AuthenticatedAgentsAgentAgentIdRouteChildren: AuthenticatedAgentsAgentAgentIdRouteChildren =
+  {
+    AuthenticatedAgentsAgentAgentIdBindingsRoute:
+      AuthenticatedAgentsAgentAgentIdBindingsRouteWithChildren,
+    AuthenticatedAgentsAgentAgentIdIndexRoute:
+      AuthenticatedAgentsAgentAgentIdIndexRoute,
+  }
+
+const AuthenticatedAgentsAgentAgentIdRouteWithChildren =
+  AuthenticatedAgentsAgentAgentIdRoute._addFileChildren(
+    AuthenticatedAgentsAgentAgentIdRouteChildren,
+  )
+
+interface AuthenticatedAgentsRouteChildren {
+  AuthenticatedAgentsDefaultsRoute: typeof AuthenticatedAgentsDefaultsRoute
+  AuthenticatedAgentsIndexRoute: typeof AuthenticatedAgentsIndexRoute
+  AuthenticatedAgentsAgentAgentIdRoute: typeof AuthenticatedAgentsAgentAgentIdRouteWithChildren
+}
+
+const AuthenticatedAgentsRouteChildren: AuthenticatedAgentsRouteChildren = {
+  AuthenticatedAgentsDefaultsRoute: AuthenticatedAgentsDefaultsRoute,
+  AuthenticatedAgentsIndexRoute: AuthenticatedAgentsIndexRoute,
+  AuthenticatedAgentsAgentAgentIdRoute:
+    AuthenticatedAgentsAgentAgentIdRouteWithChildren,
+}
+
+const AuthenticatedAgentsRouteWithChildren =
+  AuthenticatedAgentsRoute._addFileChildren(AuthenticatedAgentsRouteChildren)
+
+interface AuthenticatedChannelsChannelChannelIdRouteChildren {
+  AuthenticatedChannelsChannelChannelIdIndexRoute: typeof AuthenticatedChannelsChannelChannelIdIndexRoute
+  AuthenticatedChannelsChannelChannelIdAccountAccountIdRoute: typeof AuthenticatedChannelsChannelChannelIdAccountAccountIdRoute
+}
+
+const AuthenticatedChannelsChannelChannelIdRouteChildren: AuthenticatedChannelsChannelChannelIdRouteChildren =
+  {
+    AuthenticatedChannelsChannelChannelIdIndexRoute:
+      AuthenticatedChannelsChannelChannelIdIndexRoute,
+    AuthenticatedChannelsChannelChannelIdAccountAccountIdRoute:
+      AuthenticatedChannelsChannelChannelIdAccountAccountIdRoute,
+  }
+
+const AuthenticatedChannelsChannelChannelIdRouteWithChildren =
+  AuthenticatedChannelsChannelChannelIdRoute._addFileChildren(
+    AuthenticatedChannelsChannelChannelIdRouteChildren,
+  )
+
+interface AuthenticatedChannelsRouteChildren {
+  AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
+  AuthenticatedChannelsChannelChannelIdRoute: typeof AuthenticatedChannelsChannelChannelIdRouteWithChildren
+}
+
+const AuthenticatedChannelsRouteChildren: AuthenticatedChannelsRouteChildren = {
+  AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
+  AuthenticatedChannelsChannelChannelIdRoute:
+    AuthenticatedChannelsChannelChannelIdRouteWithChildren,
+}
+
+const AuthenticatedChannelsRouteWithChildren =
+  AuthenticatedChannelsRoute._addFileChildren(
+    AuthenticatedChannelsRouteChildren,
+  )
+
+interface AuthenticatedModelsProviderProviderIdRouteChildren {
+  AuthenticatedModelsProviderProviderIdIndexRoute: typeof AuthenticatedModelsProviderProviderIdIndexRoute
+  AuthenticatedModelsProviderProviderIdModelModelIdRoute: typeof AuthenticatedModelsProviderProviderIdModelModelIdRoute
+}
+
+const AuthenticatedModelsProviderProviderIdRouteChildren: AuthenticatedModelsProviderProviderIdRouteChildren =
+  {
+    AuthenticatedModelsProviderProviderIdIndexRoute:
+      AuthenticatedModelsProviderProviderIdIndexRoute,
+    AuthenticatedModelsProviderProviderIdModelModelIdRoute:
+      AuthenticatedModelsProviderProviderIdModelModelIdRoute,
+  }
+
+const AuthenticatedModelsProviderProviderIdRouteWithChildren =
+  AuthenticatedModelsProviderProviderIdRoute._addFileChildren(
+    AuthenticatedModelsProviderProviderIdRouteChildren,
+  )
+
+interface AuthenticatedModelsRouteChildren {
+  AuthenticatedModelsIndexRoute: typeof AuthenticatedModelsIndexRoute
+  AuthenticatedModelsProviderProviderIdRoute: typeof AuthenticatedModelsProviderProviderIdRouteWithChildren
+}
+
+const AuthenticatedModelsRouteChildren: AuthenticatedModelsRouteChildren = {
+  AuthenticatedModelsIndexRoute: AuthenticatedModelsIndexRoute,
+  AuthenticatedModelsProviderProviderIdRoute:
+    AuthenticatedModelsProviderProviderIdRouteWithChildren,
+}
+
+const AuthenticatedModelsRouteWithChildren =
+  AuthenticatedModelsRoute._addFileChildren(AuthenticatedModelsRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAgentsRoute: typeof AuthenticatedAgentsRoute
-  AuthenticatedChannelsRoute: typeof AuthenticatedChannelsRoute
-  AuthenticatedModelsRoute: typeof AuthenticatedModelsRoute
+  AuthenticatedAgentsRoute: typeof AuthenticatedAgentsRouteWithChildren
+  AuthenticatedChannelsRoute: typeof AuthenticatedChannelsRouteWithChildren
+  AuthenticatedModelsRoute: typeof AuthenticatedModelsRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAgentsRoute: AuthenticatedAgentsRoute,
-  AuthenticatedChannelsRoute: AuthenticatedChannelsRoute,
-  AuthenticatedModelsRoute: AuthenticatedModelsRoute,
+  AuthenticatedAgentsRoute: AuthenticatedAgentsRouteWithChildren,
+  AuthenticatedChannelsRoute: AuthenticatedChannelsRouteWithChildren,
+  AuthenticatedModelsRoute: AuthenticatedModelsRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
