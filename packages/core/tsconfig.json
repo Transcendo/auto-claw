@@ -5,7 +5,8 @@
     "outDir": "dist",
     "declaration": true,
     "emitDeclarationOnly": true,
-    "noEmit": false
+    "noEmit": false,
+    "resolveJsonModule": true
   },
   "include": ["src"]
 }

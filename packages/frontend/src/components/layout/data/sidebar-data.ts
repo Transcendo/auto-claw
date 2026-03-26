@@ -1,39 +1,32 @@
 import {
-  Command,
-  GalleryVerticalEnd,
-  AudioWaveform,
-  LayoutDashboard,
+  Bot,
+  Boxes,
+  Cable,
   Settings,
   Languages,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
-  teams: [
-    {
-      name: 'Shadcn Admin',
-      logo: Command,
-      plan: 'Vite + ShadcnUI',
-    },
-    {
-      name: 'Acme Inc',
-      logo: GalleryVerticalEnd,
-      plan: 'Enterprise',
-    },
-    {
-      name: 'Acme Corp.',
-      logo: AudioWaveform,
-      plan: 'Startup',
-    },
-  ],
+  teams: [],
   navGroups: [
     {
-      title: 'General',
+      title: 'Configuration',
       items: [
         {
-          title: 'Dashboard',
-          url: '/',
-          icon: LayoutDashboard,
+          title: 'Models',
+          url: '/models',
+          icon: Boxes,
+        },
+        {
+          title: 'Channels',
+          url: '/channels',
+          icon: Cable,
+        },
+        {
+          title: 'Agents',
+          url: '/agents',
+          icon: Bot,
         },
       ],
     },

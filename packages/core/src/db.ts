@@ -3,6 +3,7 @@ import { homedir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import Database from 'better-sqlite3'
 import { type BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3'
+import { runPendingMigrations } from './migrations'
 
 const DATABASE_DIR_NAME = '.auto-claw'
 const DATABASE_FILE_NAME = 'data.db'
@@ -36,6 +37,7 @@ export function initializeDatabase() {
 
   const connection = new Database(databasePath)
   applyDatabasePragmas(connection)
+  runPendingMigrations(connection)
 
   sqlite = connection
   db = drizzle(connection)

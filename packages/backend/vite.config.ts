@@ -23,8 +23,8 @@ export default defineConfig({
       ],
       output: {
         paths: {
-          '@auto-code/core': '../../core/index.js',
-          '@auto-code/core/db': '../../core/db.js',
+          '@auto-code/core': '../../core/dist/index.js',
+          '@auto-code/core/db': '../../core/dist/db.js',
         },
       },
     },
