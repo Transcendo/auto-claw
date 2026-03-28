@@ -4,9 +4,11 @@ import { resolve } from 'node:path'
 import process from 'node:process'
 import {
   buildGreeting,
+  checkOpenClawVersion,
   createEnvironment,
   deleteEnvironment,
   getEnvironmentStatus,
+  getAutoClawSettings,
   initializeAutoClawConfig,
   getOpenClawAgentsSection,
   getOpenClawBackupContent,
@@ -14,10 +16,17 @@ import {
   getOpenClawConfigMetadataPayload,
   getOpenClawGenericSection,
   getOpenClawModelsSection,
+  getOpenClawServiceStatus,
   isCoreError,
   listEnvironments,
   listOpenClawBackups,
   restoreOpenClawBackup,
+  restartOpenClawService,
+  startOpenClawService,
+  stopOpenClawService,
+  installOpenClawService,
+  updateEnvironment,
+  updateGlobalSettings,
   updateOpenClawAgentsSection,
   updateOpenClawChannelsSection,
   updateOpenClawGenericSection,
@@ -56,6 +65,41 @@ function getRequiredString(
 ) {
   const value = body[key]
   return typeof value === 'string' ? value : ''
+}
+
+function getOptionalString(
+  body: Record<string, unknown>,
+  key: string
+) {
+  const value = body[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+function getRequiredInteger(
+  body: Record<string, unknown>,
+  key: string
+) {
+  const value = body[key]
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value)
+    if (Number.isInteger(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+
+  const error: ApiErrorBody = {
+    title: 'Invalid Request',
+    message: `${key} must be a positive integer`,
+  }
+  throw Object.assign(new Error(error.message), {
+    statusCode: 400,
+    title: error.title,
+    details: undefined,
+  })
 }
 
 function getRequiredNumber(value: string, field: string) {
@@ -136,13 +180,49 @@ app.get('/api/environments', (c) => {
   })
 })
 
+app.get('/api/settings', (c) => {
+  return c.json(getAutoClawSettings())
+})
+
+app.put('/api/settings/global', async (c) => {
+  const body = jsonBody<{
+    runMode?: 'global' | 'source'
+    sourcePath?: string | null
+    launchMode?: 'daemon' | 'runtime'
+  }>(await c.req.json())
+
+  const global = updateGlobalSettings({
+    runMode: body.runMode,
+    sourcePath:
+      body.sourcePath === null ? null : getOptionalString(body, 'sourcePath'),
+    launchMode: body.launchMode,
+  })
+
+  return c.json({ global })
+})
+
 app.post('/api/environments', async (c) => {
-  const body = jsonBody<{ openclawPath?: string }>(await c.req.json())
+  const body = jsonBody<{ openclawPath?: string, port?: number | string }>(
+    await c.req.json()
+  )
   const item = createEnvironment({
     openclawPath: getRequiredString(body, 'openclawPath'),
+    port: getRequiredInteger(body, 'port'),
   })
 
   return c.json({ item }, 201)
+})
+
+app.put('/api/environments/:id', async (c) => {
+  const body = jsonBody<{ openclawPath?: string, port?: number | string }>(
+    await c.req.json()
+  )
+  const item = updateEnvironment(c.req.param('id'), {
+    openclawPath: getRequiredString(body, 'openclawPath'),
+    port: getRequiredInteger(body, 'port'),
+  })
+
+  return c.json({ item })
 })
 
 app.delete('/api/environments/:id', (c) => {
@@ -242,6 +322,42 @@ app.post('/api/environments/:id/backups/:version/restore', async (c) => {
   const version = getRequiredNumber(c.req.param('version'), 'version')
   const status = await restoreOpenClawBackup(c.req.param('id'), version)
   return c.json({ status })
+})
+
+app.post('/api/settings/check-version', async (c) => {
+  const body = jsonBody<{ environmentId?: string }>(await c.req.json())
+  const result = await checkOpenClawVersion(getRequiredString(body, 'environmentId'))
+  return c.json(result)
+})
+
+app.get('/api/settings/service/status', async (c) => {
+  const environmentId = c.req.query('environmentId') ?? ''
+  const status = await getOpenClawServiceStatus(environmentId)
+  return c.json(status)
+})
+
+app.post('/api/settings/service/install', async (c) => {
+  const body = jsonBody<{ environmentId?: string }>(await c.req.json())
+  const result = await installOpenClawService(getRequiredString(body, 'environmentId'))
+  return c.json(result)
+})
+
+app.post('/api/settings/service/start', async (c) => {
+  const body = jsonBody<{ environmentId?: string }>(await c.req.json())
+  const result = await startOpenClawService(getRequiredString(body, 'environmentId'))
+  return c.json(result)
+})
+
+app.post('/api/settings/service/stop', async (c) => {
+  const body = jsonBody<{ environmentId?: string }>(await c.req.json())
+  const result = await stopOpenClawService(getRequiredString(body, 'environmentId'))
+  return c.json(result)
+})
+
+app.post('/api/settings/service/restart', async (c) => {
+  const body = jsonBody<{ environmentId?: string }>(await c.req.json())
+  const result = await restartOpenClawService(getRequiredString(body, 'environmentId'))
+  return c.json(result)
 })
 
 const distDir = process.env.FRONTEND_DIST

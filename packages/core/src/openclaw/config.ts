@@ -215,6 +215,7 @@ export async function getEnvironmentStatus(
     return {
       environmentId,
       openclawPath: environment.openclawPath,
+      port: environment.port,
       configPath,
       directoryExists,
       configExists,
@@ -227,6 +228,7 @@ export async function getEnvironmentStatus(
     return {
       environmentId,
       openclawPath: environment.openclawPath,
+      port: environment.port,
       configPath,
       directoryExists,
       configExists,
@@ -242,6 +244,7 @@ export async function getEnvironmentStatus(
     return {
       environmentId,
       openclawPath: environment.openclawPath,
+      port: environment.port,
       configPath,
       directoryExists,
       configExists,
@@ -252,6 +255,7 @@ export async function getEnvironmentStatus(
     return {
       environmentId,
       openclawPath: environment.openclawPath,
+      port: environment.port,
       configPath,
       directoryExists,
       configExists,
@@ -469,7 +473,10 @@ export async function seedDefaultEnvironment() {
     return existing
   }
 
-  return createEnvironment({ openclawPath: seedPath })
+  return createEnvironment({
+    openclawPath: seedPath,
+    port: 18789,
+  })
 }
 
 export function getConfigSectionKinds(): OpenClawConfigSectionKey[] {

@@ -2,6 +2,7 @@ import { existsSync, statSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
 import {
+  getDefaultEnvironmentPort,
   readAutoClawConfig,
   writeAutoClawConfig,
 } from './app-config'
@@ -40,6 +41,18 @@ function assertValidEnvironmentPath(openclawPath: string) {
   }
 
   return normalizedPath
+}
+
+function assertValidEnvironmentPort(port: number) {
+  if (!Number.isInteger(port) || port < 1) {
+    throw new CoreError({
+      statusCode: 400,
+      title: 'Invalid Environment Port',
+      message: 'port must be a positive integer',
+    })
+  }
+
+  return port
 }
 
 function findEnvironmentById(id: string) {
@@ -81,11 +94,32 @@ export function getFirstEnvironment() {
   return environment
 }
 
-export function createEnvironment(input: { openclawPath: string }) {
+type EnvironmentInput = {
+  openclawPath: string
+  port: number
+}
+
+function matchesEnvironment(
+  environment: EnvironmentRecord,
+  input: EnvironmentInput,
+  excludeId?: string
+) {
+  if (excludeId && environment.id === excludeId) {
+    return false
+  }
+
+  return (
+    environment.openclawPath === input.openclawPath
+    && environment.port === input.port
+  )
+}
+
+export function createEnvironment(input: EnvironmentInput) {
   const openclawPath = assertValidEnvironmentPath(input.openclawPath)
+  const port = assertValidEnvironmentPort(input.port)
   const config = readAutoClawConfig()
-  const existing = config.environments.find(
-    environment => environment.openclawPath === openclawPath
+  const existing = config.environments.find(environment =>
+    matchesEnvironment(environment, { openclawPath, port })
   )
 
   if (existing) {
@@ -96,6 +130,7 @@ export function createEnvironment(input: { openclawPath: string }) {
   const environment: EnvironmentRecord = {
     id: randomUUID(),
     openclawPath,
+    port,
     createdAt: now,
     updatedAt: now,
   }
@@ -109,6 +144,48 @@ export function createEnvironment(input: { openclawPath: string }) {
   writeAutoClawConfig(nextConfig)
 
   return environment
+}
+
+export function updateEnvironment(
+  id: string,
+  input: EnvironmentInput
+) {
+  const openclawPath = assertValidEnvironmentPath(input.openclawPath)
+  const port = assertValidEnvironmentPort(input.port)
+  const config = readAutoClawConfig()
+  const current = config.environments.find(environment => environment.id === id)
+
+  if (!current) {
+    throw new CoreError({
+      statusCode: 404,
+      title: 'Environment Not Found',
+      message: `Environment ${id} was not found`,
+    })
+  }
+
+  const duplicate = config.environments.find(environment =>
+    matchesEnvironment(environment, { openclawPath, port }, id)
+  )
+
+  if (duplicate) {
+    return duplicate
+  }
+
+  const nextEnvironment: EnvironmentRecord = {
+    ...current,
+    openclawPath,
+    port,
+    updatedAt: new Date().toISOString(),
+  }
+
+  writeAutoClawConfig({
+    ...config,
+    environments: config.environments.map(environment =>
+      environment.id === id ? nextEnvironment : environment
+    ),
+  })
+
+  return nextEnvironment
 }
 
 export function deleteEnvironment(id: string) {
@@ -133,4 +210,8 @@ export function deleteEnvironment(id: string) {
     defaultEnvironmentId,
     environments: nextEnvironments,
   })
+}
+
+export function getDefaultPortForEnvironment() {
+  return getDefaultEnvironmentPort()
 }

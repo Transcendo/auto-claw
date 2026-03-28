@@ -69,13 +69,41 @@ export type OpenClawValidationIssue = {
 export type EnvironmentRecord = {
   id: string
   openclawPath: string
+  port: number
   createdAt: string
   updatedAt: string
+}
+
+export type OpenClawRunMode = 'global' | 'source'
+
+export type OpenClawLaunchMode = 'daemon' | 'runtime'
+
+export type ManagedRuntimeProcess = {
+  pid: number
+  startedAt: string
+  environmentId: string
+  openclawPath: string
+  port: number
+  command: string[]
+  cwd: string | null
+  logPath: string
+}
+
+export type GlobalSettings = {
+  runMode: OpenClawRunMode
+  sourcePath: string | null
+  launchMode: OpenClawLaunchMode
+  runtimeProcess: ManagedRuntimeProcess | null
+}
+
+export type AutoClawSettingsPayload = {
+  global: GlobalSettings
 }
 
 export type EnvironmentStatus = {
   environmentId: string
   openclawPath: string
+  port: number
   configPath: string
   directoryExists: boolean
   configExists: boolean
@@ -97,4 +125,42 @@ export type OpenClawGenericSection = Record<string, unknown>
 export type OpenClawAgentsSection = {
   agents?: Record<string, unknown>
   bindings?: unknown[]
+}
+
+export type OpenClawCommandResult = {
+  ok: boolean
+  command: string[]
+  cwd: string | null
+  stdout: string
+  stderr: string
+  exitCode: number | null
+  error?: string
+}
+
+export type OpenClawVersionCheckResult = OpenClawCommandResult & {
+  version?: string
+}
+
+export type OpenClawServiceStatus = {
+  launchMode: OpenClawLaunchMode
+  runMode: OpenClawRunMode
+  environmentId: string
+  command: string[]
+  cwd: string | null
+  installed: boolean
+  running: boolean
+  pid?: number
+  startedAt?: string
+  logPath?: string
+  activeEnvironmentId?: string
+  stdout: string
+  stderr: string
+  error?: string
+  statusPayload?: Record<string, unknown>
+}
+
+export type OpenClawServiceAction = 'install' | 'start' | 'stop' | 'restart'
+
+export type OpenClawServiceActionResult = OpenClawServiceStatus & {
+  action: OpenClawServiceAction
 }

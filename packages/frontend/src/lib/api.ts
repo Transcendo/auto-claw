@@ -1,7 +1,9 @@
 import axios from 'axios'
 import type {
+  AutoClawSettingsPayload,
   EnvironmentRecord,
   EnvironmentStatus,
+  GlobalSettings,
   OpenClawAgentsPayload,
   OpenClawBackupRecord,
   OpenClawChannelsSection,
@@ -9,6 +11,10 @@ import type {
   OpenClawConfigSectionKey,
   OpenClawGenericSection,
   OpenClawModelsSection,
+  OpenClawServiceAction,
+  OpenClawServiceActionResult,
+  OpenClawServiceStatus,
+  OpenClawVersionCheckResult,
 } from '@/types/openclaw'
 
 export const api = axios.create({
@@ -20,10 +26,42 @@ export async function fetchEnvironments() {
   return data.items
 }
 
-export async function createEnvironmentRequest(openclawPath: string) {
+export async function fetchSettings() {
+  const { data } = await api.get<AutoClawSettingsPayload>('/settings')
+  return data
+}
+
+export async function updateGlobalSettingsRequest(payload: {
+  runMode: GlobalSettings['runMode']
+  sourcePath: string | null
+  launchMode: GlobalSettings['launchMode']
+}) {
+  const { data } = await api.put<{ global: GlobalSettings }>('/settings/global', payload)
+  return data.global
+}
+
+export async function createEnvironmentRequest(payload: {
+  openclawPath: string
+  port: number
+}) {
   const { data } = await api.post<{ item: EnvironmentRecord }>('/environments', {
-    openclawPath,
+    openclawPath: payload.openclawPath,
+    port: payload.port,
   })
+  return data.item
+}
+
+export async function updateEnvironmentRequest(
+  environmentId: string,
+  payload: {
+    openclawPath: string
+    port: number
+  }
+) {
+  const { data } = await api.put<{ item: EnvironmentRecord }>(
+    `/environments/${environmentId}`,
+    payload
+  )
   return data.item
 }
 
@@ -143,4 +181,33 @@ export async function restoreBackup(environmentId: string, version: number) {
     `/environments/${environmentId}/backups/${version}/restore`
   )
   return data.status
+}
+
+export async function checkOpenClawVersionRequest(environmentId: string) {
+  const { data } = await api.post<OpenClawVersionCheckResult>(
+    '/settings/check-version',
+    { environmentId }
+  )
+  return data
+}
+
+export async function fetchOpenClawServiceStatus(environmentId: string) {
+  const { data } = await api.get<OpenClawServiceStatus>(
+    '/settings/service/status',
+    {
+      params: { environmentId },
+    }
+  )
+  return data
+}
+
+export async function runOpenClawServiceAction(
+  action: OpenClawServiceAction,
+  environmentId: string
+) {
+  const { data } = await api.post<OpenClawServiceActionResult>(
+    `/settings/service/${action}`,
+    { environmentId }
+  )
+  return data
 }
