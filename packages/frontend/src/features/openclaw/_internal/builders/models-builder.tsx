@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useDialogDraft } from '@/hooks/use-dialog-draft'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -8,7 +7,6 @@ import {
   EntityCard,
   EntityGrid,
 } from '@/components/config-builder'
-import { SchemaFormEditor } from '../../schema-form-editor'
 import {
   appendProviderModel,
   createDefaultModelValue,
@@ -24,6 +22,7 @@ import {
   summarizeProvider,
 } from '../lib/models-editor'
 import { asObject } from '../lib/value-readers'
+import { ModelsGlobalSettings } from './models-global-settings'
 import { useModelsEditor } from './models-context'
 
 export function ModelsBuilder() {
@@ -33,7 +32,7 @@ export function ModelsBuilder() {
     onChange,
     onSave,
     isSaving,
-    globalSchema,
+    metadataMap,
     providerSchema,
     modelSchema,
   } = useModelsEditor()
@@ -43,7 +42,7 @@ export function ModelsBuilder() {
   const [selectedProviderId, setSelectedProviderId] = useState(
     providerEntries[0]?.[0] ?? ''
   )
-  const globalDialog = useDialogDraft<Record<string, unknown>>()
+  const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false)
   const activeProviderId =
     selectedProviderId && selectedProviderId in providers
       ? selectedProviderId
@@ -59,16 +58,6 @@ export function ModelsBuilder() {
 
     return summarizeProvider(activeProviderId, activeProvider)
   }, [activeProvider, activeProviderId])
-
-  const openGlobalSettings = () => {
-    globalDialog.openEdit(
-      {
-        bedrockDiscovery: asObject(rootValue.bedrockDiscovery),
-        mode: rootValue.mode,
-      },
-      undefined
-    )
-  }
 
   const addProvider = async () => {
     if (!providerSchema) {
@@ -164,8 +153,7 @@ export function ModelsBuilder() {
           <Button
             type='button'
             variant='outline'
-            onClick={openGlobalSettings}
-            disabled={isSaving}
+            onClick={() => setGlobalSettingsOpen(true)}
           >
             Global Settings
           </Button>
@@ -321,59 +309,22 @@ export function ModelsBuilder() {
       )}
 
       <EditorDialog
-        open={globalDialog.isOpen}
-        onOpenChange={(open) => !open && globalDialog.close()}
-        title='Model Global Settings'
-        description='Edit top-level merge mode and Bedrock discovery settings.'
-        footer={
-          <>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={globalDialog.close}
-            >
-              Cancel
-            </Button>
-            <Button
-              type='button'
-              disabled={isSaving}
-              onClick={async () => {
-                if (!globalDialog.state) {
-                  return
-                }
-
-                const nextValue = {
-                  ...rootValue,
-                  ...globalDialog.state.draft,
-                }
-
-                onChange(nextValue)
-                const saved = await onSave(nextValue)
-                if (saved) {
-                  globalDialog.close()
-                }
-              }}
-            >
-              {isSaving ? 'Saving...' : 'Save'}
-            </Button>
-          </>
-        }
+        open={globalSettingsOpen}
+        onOpenChange={setGlobalSettingsOpen}
+        title='Global Settings'
+        description='Edit top-level model catalog and Bedrock discovery settings.'
+        size='xl'
       >
-        {globalDialog.state && (
-          <SchemaFormEditor
-            path='models'
-            schema={globalSchema}
-            value={globalDialog.state.draft}
-            onChange={(nextValue) =>
-              globalDialog.updateDraft(
-                asObject(nextValue) as Record<string, unknown>
-              )
-            }
-            layout='compact'
-            descriptionMode='tooltip'
-          />
-        )}
+        <ModelsGlobalSettings
+          value={value}
+          metadataMap={metadataMap}
+          providerIds={providerEntries.map(([providerId]) => providerId)}
+          onChange={onChange}
+          onSave={onSave}
+          wrapped={false}
+        />
       </EditorDialog>
+
     </div>
   )
 }

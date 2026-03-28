@@ -425,54 +425,107 @@ function ArrayEditor({
 
   return (
     <div className={cn('space-y-4', layout === 'compact' && 'space-y-3')}>
-      {arrayValue.map((itemValue, index) => (
-        <SchemaFieldShell
-          key={`${path}[${index}]`}
-          path={`${path}[${index}]`}
-          label={`Item ${index + 1}`}
-          depth={depth}
-          layout={layout}
-          compactFieldLayout={compactFieldLayout}
-          descriptionMode={descriptionMode}
-          action={
-            <Button
-              type='button'
-              variant='ghost'
-              size='icon'
-              onClick={() => {
-                const nextValue = arrayValue.filter(
-                  (_, itemIndex) => itemIndex !== index
+      {arrayValue.map((itemValue, index) => {
+        const itemPath = `${path}[${index}]`
+        const itemType = getActiveType(itemSchema, itemValue)
+        const isPrimitiveItem =
+          itemType === 'string' ||
+          itemType === 'number' ||
+          itemType === 'integer' ||
+          itemType === 'boolean'
+
+        if (layout === 'compact' && isPrimitiveItem) {
+          return (
+            <div
+              key={itemPath}
+              className='py-1'
+            >
+              <div className='flex items-center gap-2'>
+                <div className='min-w-0 flex-1'>
+                  <SchemaFormEditor
+                    path={itemPath}
+                    schema={itemSchema}
+                    value={itemValue}
+                    onChange={(nextItemValue) => {
+                      const nextValue = arrayValue.map((currentValue, itemIndex) =>
+                        itemIndex === index ? nextItemValue : currentValue
+                      )
+                      onChange(nextValue)
+                    }}
+                    depth={depth + 1}
+                    layout={layout}
+                    hiddenPaths={hiddenPaths}
+                    omitKeys={omitKeys}
+                    descriptionMode={descriptionMode}
+                    showAllFields={showAllFields}
+                    allowRemoveOptionalFields={allowRemoveOptionalFields}
+                    compactFieldLayout={compactFieldLayout}
+                    compactBooleanColumns={compactBooleanColumns}
+                  />
+                </div>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => {
+                    const nextValue = arrayValue.filter(
+                      (_, itemIndex) => itemIndex !== index
+                    )
+                    onChange(nextValue)
+                  }}
+                  aria-label={`Remove item ${index + 1}`}
+                >
+                  <Trash2 className='size-4' />
+                </Button>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div
+            key={itemPath}
+            className='space-y-3 py-1'
+          >
+            <div className='flex justify-end'>
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon'
+                onClick={() => {
+                  const nextValue = arrayValue.filter(
+                    (_, itemIndex) => itemIndex !== index
+                  )
+                  onChange(nextValue)
+                }}
+                aria-label={`Remove item ${index + 1}`}
+              >
+                <Trash2 className='size-4' />
+              </Button>
+            </div>
+            <SchemaFormEditor
+              path={itemPath}
+              schema={itemSchema}
+              value={itemValue}
+              onChange={(nextItemValue) => {
+                const nextValue = arrayValue.map((currentValue, itemIndex) =>
+                  itemIndex === index ? nextItemValue : currentValue
                 )
                 onChange(nextValue)
               }}
-              aria-label={`Remove item ${index + 1}`}
-            >
-              <Trash2 className='size-4' />
-            </Button>
-          }
-        >
-          <SchemaFormEditor
-            path={`${path}[${index}]`}
-            schema={itemSchema}
-            value={itemValue}
-            onChange={(nextItemValue) => {
-              const nextValue = arrayValue.map((currentValue, itemIndex) =>
-                itemIndex === index ? nextItemValue : currentValue
-              )
-              onChange(nextValue)
-            }}
-            depth={depth + 1}
-            layout={layout}
-            hiddenPaths={hiddenPaths}
-            omitKeys={omitKeys}
-            descriptionMode={descriptionMode}
-            showAllFields={showAllFields}
-            allowRemoveOptionalFields={allowRemoveOptionalFields}
-            compactFieldLayout={compactFieldLayout}
-            compactBooleanColumns={compactBooleanColumns}
-          />
-        </SchemaFieldShell>
-      ))}
+              depth={depth + 1}
+              layout={layout}
+              hiddenPaths={hiddenPaths}
+              omitKeys={omitKeys}
+              descriptionMode={descriptionMode}
+              showAllFields={showAllFields}
+              allowRemoveOptionalFields={allowRemoveOptionalFields}
+              compactFieldLayout={compactFieldLayout}
+              compactBooleanColumns={compactBooleanColumns}
+            />
+          </div>
+        )
+      })}
 
       <div
         className={cn(

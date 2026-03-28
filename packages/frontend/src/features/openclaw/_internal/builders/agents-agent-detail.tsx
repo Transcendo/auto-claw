@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { getObjectPropertySchema } from '@/lib/json-schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import {
   DetailFormRow,
@@ -24,13 +25,17 @@ import {
   getEnumOptions,
   getMetadataDescription,
 } from '../lib/agents-fields'
-import { asObject } from '../lib/value-readers'
+import { asArray, asObject } from '../lib/value-readers'
 import {
   readBooleanInputValue,
   readInputValue,
+  readNumberInputValue,
   setBooleanValue,
+  setOptionalNumberValue,
   setOptionalStringValue,
 } from '../lib/form-fields'
+import { AgentModelFields } from './agent-model-fields'
+import { AgentSubagentsFields } from './agent-subagents-fields'
 
 type AgentsAgentDetailProps = {
   routeAgentId: string
@@ -139,6 +144,21 @@ export function AgentsAgentDetail({
   }
 
   const agentSchema = agentItemSchema
+  const humanDelay = asObject(agent.humanDelay)
+  const subagentsSchema = getObjectPropertySchema(agentSchema, 'subagents')
+  const agentOptions = asArray(asObject(value.agents).list)
+    .map((item) => asObject(item))
+    .map((item) => {
+      const itemId = readInputValue(item.id)
+
+      return itemId
+        ? {
+            label: readInputValue(item.name) || itemId,
+            value: itemId,
+          }
+        : null
+    })
+    .filter((item): item is { label: string; value: string } => item !== null)
 
   return (
     <DetailPageShell
@@ -177,28 +197,45 @@ export function AgentsAgentDetail({
         advancedOpen={advancedOpen}
         onAdvancedOpenChange={setAdvancedOpen}
         advancedChildren={
-          <SchemaFormEditor
-            path={`agents.list[${agentIndex}]`}
-            schema={agentSchema}
-            value={agent}
-            onChange={(nextValue) => updateAgent(asObject(nextValue))}
-            layout='compact'
-            descriptionMode='tooltip'
-            hiddenPaths={[
-              `agents.list[${agentIndex}].default`,
-              `agents.list[${agentIndex}].id`,
-              `agents.list[${agentIndex}].name`,
-              `agents.list[${agentIndex}].model`,
-              `agents.list[${agentIndex}].workspace`,
-              `agents.list[${agentIndex}].agentDir`,
-              `agents.list[${agentIndex}].thinkingDefault`,
-              `agents.list[${agentIndex}].reasoningDefault`,
-              `agents.list[${agentIndex}].fastModeDefault`,
-              `agents.list[${agentIndex}].humanDelay`,
-            ]}
-            compactFieldLayout='inline'
-            compactBooleanColumns
-          />
+          <div className='space-y-4'>
+            <AgentSubagentsFields
+              pathPrefix={`agents.list[${agentIndex}].subagents`}
+              value={agent.subagents}
+              metadataMap={metadataMap}
+              schema={subagentsSchema}
+              agentOptions={agentOptions}
+              onChange={(nextValue) =>
+                updateAgent((currentAgent) => ({
+                  ...currentAgent,
+                  subagents: nextValue,
+                }))
+              }
+            />
+
+            <SchemaFormEditor
+              path={`agents.list[${agentIndex}]`}
+              schema={agentSchema}
+              value={agent}
+              onChange={(nextValue) => updateAgent(asObject(nextValue))}
+              layout='compact'
+              descriptionMode='tooltip'
+              hiddenPaths={[
+                `agents.list[${agentIndex}].default`,
+                `agents.list[${agentIndex}].id`,
+                `agents.list[${agentIndex}].name`,
+                `agents.list[${agentIndex}].model`,
+                `agents.list[${agentIndex}].workspace`,
+                `agents.list[${agentIndex}].agentDir`,
+                `agents.list[${agentIndex}].thinkingDefault`,
+                `agents.list[${agentIndex}].reasoningDefault`,
+                `agents.list[${agentIndex}].fastModeDefault`,
+                `agents.list[${agentIndex}].humanDelay`,
+                `agents.list[${agentIndex}].subagents`,
+              ]}
+              compactFieldLayout='inline'
+              compactBooleanColumns
+            />
+          </div>
         }
       >
         <div className='grid gap-x-8 gap-y-0 xl:grid-cols-2'>
@@ -238,21 +275,19 @@ export function AgentsAgentDetail({
             description={getMetadataDescription(metadataMap, 'agents.list.*.model')}
             className='xl:col-span-2'
           >
-            <SchemaFormEditor
-              path={`agents.list[${agentIndex}].model`}
-              schema={getObjectPropertySchema(agentSchema, 'model')}
-              value={agent.model}
-              onChange={(nextValue) =>
-                updateAgent((currentAgent) => ({
-                  ...currentAgent,
-                  model: nextValue,
-                }))
-              }
-              layout='compact'
-              descriptionMode='tooltip'
-              compactFieldLayout='inline'
-              compactBooleanColumns
-            />
+            <div className='grid gap-x-8 gap-y-0 xl:grid-cols-2'>
+              <AgentModelFields
+                labelPathPrefix='agents.list.*.model'
+                value={agent.model}
+                metadataMap={metadataMap}
+                onChange={(nextValue) =>
+                  updateAgent((currentAgent) => ({
+                    ...currentAgent,
+                    model: nextValue,
+                  }))
+                }
+              />
+            </div>
           </DetailFormRow>
 
           <DetailFormRow
@@ -364,21 +399,59 @@ export function AgentsAgentDetail({
             )}
             className='xl:col-span-2'
           >
-            <SchemaFormEditor
-              path={`agents.list[${agentIndex}].humanDelay`}
-              schema={getObjectPropertySchema(agentSchema, 'humanDelay')}
-              value={agent.humanDelay}
-              onChange={(nextValue) =>
-                updateAgent((currentAgent) => ({
-                  ...currentAgent,
-                  humanDelay: nextValue,
-                }))
-              }
-              layout='compact'
-              descriptionMode='tooltip'
-              compactFieldLayout='inline'
-              compactBooleanColumns
-            />
+            <div className='grid gap-3 md:grid-cols-3'>
+              <div className='space-y-2'>
+                <Label className='text-xs text-muted-foreground'>Min Ms</Label>
+                <Input
+                  type='number'
+                  value={readNumberInputValue(humanDelay.minMs)}
+                  onChange={(event) =>
+                    updateAgent((currentAgent) => ({
+                      ...currentAgent,
+                      humanDelay: setOptionalNumberValue(
+                        asObject(currentAgent.humanDelay),
+                        'minMs',
+                        event.target.value
+                      ),
+                    }))
+                  }
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label className='text-xs text-muted-foreground'>Max Ms</Label>
+                <Input
+                  type='number'
+                  value={readNumberInputValue(humanDelay.maxMs)}
+                  onChange={(event) =>
+                    updateAgent((currentAgent) => ({
+                      ...currentAgent,
+                      humanDelay: setOptionalNumberValue(
+                        asObject(currentAgent.humanDelay),
+                        'maxMs',
+                        event.target.value
+                      ),
+                    }))
+                  }
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label className='text-xs text-muted-foreground'>Mode</Label>
+                <SingleSelectField
+                  options={getEnumOptions(metadataMap, 'agents.list.*.humanDelay.mode')}
+                  value={readInputValue(humanDelay.mode)}
+                  onChange={(nextValue) =>
+                    updateAgent((currentAgent) => ({
+                      ...currentAgent,
+                      humanDelay: {
+                        ...asObject(currentAgent.humanDelay),
+                        mode: nextValue,
+                      },
+                    }))
+                  }
+                  placeholder='Select delay mode'
+                />
+              </div>
+            </div>
           </DetailFormRow>
         </div>
       </DetailFormSection>

@@ -123,7 +123,7 @@ export function SchemaDynamicObjectEntry({
     <div
       className={cn(
         'space-y-3 rounded-xl border border-border/60 bg-background/70 p-4',
-        layout === 'compact' && 'rounded-lg bg-muted/20 p-3'
+        layout === 'compact' && 'rounded-none border-0 bg-transparent p-0'
       )}
     >
       <div className='flex items-center gap-3'>

@@ -23,6 +23,7 @@ import {
 import { getMetadataDescription, getEnumOptions } from '../lib/agents-fields'
 import { asObject } from '../lib/value-readers'
 import { readInputValue, readNumberInputValue, setOptionalNumberValue, setOptionalStringValue } from '../lib/form-fields'
+import { AgentModelFields } from './agent-model-fields'
 
 export function AgentsDefaultsDetail() {
   const navigate = useNavigate()
@@ -150,21 +151,19 @@ export function AgentsDefaultsDetail() {
             description={getMetadataDescription(metadataMap, 'agents.defaults.model')}
             className='xl:col-span-2'
           >
-            <SchemaFormEditor
-              path='agents.defaults.model'
-              schema={getObjectPropertySchema(defaultsSchema, 'model')}
-              value={defaultsValue.model}
-              onChange={(nextValue) =>
-                updateDefaults((currentDefaults) => ({
-                  ...currentDefaults,
-                  model: nextValue,
-                }))
-              }
-              layout='compact'
-              descriptionMode='tooltip'
-              compactFieldLayout='inline'
-              compactBooleanColumns
-            />
+            <div className='grid gap-x-8 gap-y-0 xl:grid-cols-2'>
+              <AgentModelFields
+                labelPathPrefix='agents.defaults.model'
+                value={defaultsValue.model}
+                metadataMap={metadataMap}
+                onChange={(nextValue) =>
+                  updateDefaults((currentDefaults) => ({
+                    ...currentDefaults,
+                    model: nextValue,
+                  }))
+                }
+              />
+            </div>
           </DetailFormRow>
 
           <DetailFormRow

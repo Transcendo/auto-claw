@@ -72,7 +72,7 @@ export function FormFieldLayout({
     return (
       <div
         className={cn(
-          'grid gap-3 border-b border-border/50 py-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center',
+          'grid gap-3 py-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center',
           className
         )}
       >
