@@ -28,10 +28,15 @@ import { Route as errors404RouteImport } from './routes/(errors)/404'
 import { Route as errors403RouteImport } from './routes/(errors)/403'
 import { Route as errors401RouteImport } from './routes/(errors)/401'
 import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models.index'
+import { Route as AuthenticatedMcpIndexRouteImport } from './routes/_authenticated/mcp.index'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels.index'
 import { Route as AuthenticatedAgentsIndexRouteImport } from './routes/_authenticated/agents.index'
+import { Route as AuthenticatedHooksSettingsRouteImport } from './routes/_authenticated/hooks.settings'
+import { Route as AuthenticatedGatewaySettingsRouteImport } from './routes/_authenticated/gateway.settings'
+import { Route as AuthenticatedCronSettingsRouteImport } from './routes/_authenticated/cron.settings'
 import { Route as AuthenticatedAgentsDefaultsRouteImport } from './routes/_authenticated/agents.defaults'
 import { Route as AuthenticatedModelsProviderProviderIdRouteImport } from './routes/_authenticated/models.provider.$providerId'
+import { Route as AuthenticatedMcpServerServerIdRouteImport } from './routes/_authenticated/mcp.server.$serverId'
 import { Route as AuthenticatedChannelsChannelChannelIdRouteImport } from './routes/_authenticated/channels.channel.$channelId'
 import { Route as AuthenticatedAgentsAgentAgentIdRouteImport } from './routes/_authenticated/agents.agent.$agentId'
 import { Route as AuthenticatedModelsProviderProviderIdIndexRouteImport } from './routes/_authenticated/models.provider.$providerId.index'
@@ -138,6 +143,11 @@ const AuthenticatedModelsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedModelsRoute,
   } as any)
+const AuthenticatedMcpIndexRoute = AuthenticatedMcpIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedMcpRoute,
+} as any)
 const AuthenticatedChannelsIndexRoute =
   AuthenticatedChannelsIndexRouteImport.update({
     id: '/',
@@ -150,6 +160,24 @@ const AuthenticatedAgentsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAgentsRoute,
   } as any)
+const AuthenticatedHooksSettingsRoute =
+  AuthenticatedHooksSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedHooksRoute,
+  } as any)
+const AuthenticatedGatewaySettingsRoute =
+  AuthenticatedGatewaySettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedGatewayRoute,
+  } as any)
+const AuthenticatedCronSettingsRoute =
+  AuthenticatedCronSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedCronRoute,
+  } as any)
 const AuthenticatedAgentsDefaultsRoute =
   AuthenticatedAgentsDefaultsRouteImport.update({
     id: '/defaults',
@@ -161,6 +189,12 @@ const AuthenticatedModelsProviderProviderIdRoute =
     id: '/provider/$providerId',
     path: '/provider/$providerId',
     getParentRoute: () => AuthenticatedModelsRoute,
+  } as any)
+const AuthenticatedMcpServerServerIdRoute =
+  AuthenticatedMcpServerServerIdRouteImport.update({
+    id: '/server/$serverId',
+    path: '/server/$serverId',
+    getParentRoute: () => AuthenticatedMcpRoute,
   } as any)
 const AuthenticatedChannelsChannelChannelIdRoute =
   AuthenticatedChannelsChannelChannelIdRouteImport.update({
@@ -233,20 +267,25 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/agents': typeof AuthenticatedAgentsRouteWithChildren
   '/channels': typeof AuthenticatedChannelsRouteWithChildren
-  '/cron': typeof AuthenticatedCronRoute
+  '/cron': typeof AuthenticatedCronRouteWithChildren
   '/env': typeof AuthenticatedEnvRoute
-  '/gateway': typeof AuthenticatedGatewayRoute
-  '/hooks': typeof AuthenticatedHooksRoute
-  '/mcp': typeof AuthenticatedMcpRoute
+  '/gateway': typeof AuthenticatedGatewayRouteWithChildren
+  '/hooks': typeof AuthenticatedHooksRouteWithChildren
+  '/mcp': typeof AuthenticatedMcpRouteWithChildren
   '/models': typeof AuthenticatedModelsRouteWithChildren
   '/plugins': typeof AuthenticatedPluginsRoute
   '/skills': typeof AuthenticatedSkillsRoute
   '/agents/defaults': typeof AuthenticatedAgentsDefaultsRoute
+  '/cron/settings': typeof AuthenticatedCronSettingsRoute
+  '/gateway/settings': typeof AuthenticatedGatewaySettingsRoute
+  '/hooks/settings': typeof AuthenticatedHooksSettingsRoute
   '/agents/': typeof AuthenticatedAgentsIndexRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
+  '/mcp/': typeof AuthenticatedMcpIndexRoute
   '/models/': typeof AuthenticatedModelsIndexRoute
   '/agents/agent/$agentId': typeof AuthenticatedAgentsAgentAgentIdRouteWithChildren
   '/channels/channel/$channelId': typeof AuthenticatedChannelsChannelChannelIdRouteWithChildren
+  '/mcp/server/$serverId': typeof AuthenticatedMcpServerServerIdRoute
   '/models/provider/$providerId': typeof AuthenticatedModelsProviderProviderIdRouteWithChildren
   '/agents/agent/$agentId/bindings': typeof AuthenticatedAgentsAgentAgentIdBindingsRouteWithChildren
   '/agents/agent/$agentId/': typeof AuthenticatedAgentsAgentAgentIdIndexRoute
@@ -264,18 +303,22 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-  '/cron': typeof AuthenticatedCronRoute
+  '/cron': typeof AuthenticatedCronRouteWithChildren
   '/env': typeof AuthenticatedEnvRoute
-  '/gateway': typeof AuthenticatedGatewayRoute
-  '/hooks': typeof AuthenticatedHooksRoute
-  '/mcp': typeof AuthenticatedMcpRoute
+  '/gateway': typeof AuthenticatedGatewayRouteWithChildren
+  '/hooks': typeof AuthenticatedHooksRouteWithChildren
   '/plugins': typeof AuthenticatedPluginsRoute
   '/skills': typeof AuthenticatedSkillsRoute
   '/': typeof AuthenticatedIndexRoute
   '/agents/defaults': typeof AuthenticatedAgentsDefaultsRoute
+  '/cron/settings': typeof AuthenticatedCronSettingsRoute
+  '/gateway/settings': typeof AuthenticatedGatewaySettingsRoute
+  '/hooks/settings': typeof AuthenticatedHooksSettingsRoute
   '/agents': typeof AuthenticatedAgentsIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
+  '/mcp': typeof AuthenticatedMcpIndexRoute
   '/models': typeof AuthenticatedModelsIndexRoute
+  '/mcp/server/$serverId': typeof AuthenticatedMcpServerServerIdRoute
   '/agents/agent/$agentId': typeof AuthenticatedAgentsAgentAgentIdIndexRoute
   '/channels/channel/$channelId': typeof AuthenticatedChannelsChannelChannelIdIndexRoute
   '/models/provider/$providerId': typeof AuthenticatedModelsProviderProviderIdIndexRoute
@@ -295,21 +338,26 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/_authenticated/agents': typeof AuthenticatedAgentsRouteWithChildren
   '/_authenticated/channels': typeof AuthenticatedChannelsRouteWithChildren
-  '/_authenticated/cron': typeof AuthenticatedCronRoute
+  '/_authenticated/cron': typeof AuthenticatedCronRouteWithChildren
   '/_authenticated/env': typeof AuthenticatedEnvRoute
-  '/_authenticated/gateway': typeof AuthenticatedGatewayRoute
-  '/_authenticated/hooks': typeof AuthenticatedHooksRoute
-  '/_authenticated/mcp': typeof AuthenticatedMcpRoute
+  '/_authenticated/gateway': typeof AuthenticatedGatewayRouteWithChildren
+  '/_authenticated/hooks': typeof AuthenticatedHooksRouteWithChildren
+  '/_authenticated/mcp': typeof AuthenticatedMcpRouteWithChildren
   '/_authenticated/models': typeof AuthenticatedModelsRouteWithChildren
   '/_authenticated/plugins': typeof AuthenticatedPluginsRoute
   '/_authenticated/skills': typeof AuthenticatedSkillsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/agents/defaults': typeof AuthenticatedAgentsDefaultsRoute
+  '/_authenticated/cron/settings': typeof AuthenticatedCronSettingsRoute
+  '/_authenticated/gateway/settings': typeof AuthenticatedGatewaySettingsRoute
+  '/_authenticated/hooks/settings': typeof AuthenticatedHooksSettingsRoute
   '/_authenticated/agents/': typeof AuthenticatedAgentsIndexRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
+  '/_authenticated/mcp/': typeof AuthenticatedMcpIndexRoute
   '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
   '/_authenticated/agents/agent/$agentId': typeof AuthenticatedAgentsAgentAgentIdRouteWithChildren
   '/_authenticated/channels/channel/$channelId': typeof AuthenticatedChannelsChannelChannelIdRouteWithChildren
+  '/_authenticated/mcp/server/$serverId': typeof AuthenticatedMcpServerServerIdRoute
   '/_authenticated/models/provider/$providerId': typeof AuthenticatedModelsProviderProviderIdRouteWithChildren
   '/_authenticated/agents/agent/$agentId/bindings': typeof AuthenticatedAgentsAgentAgentIdBindingsRouteWithChildren
   '/_authenticated/agents/agent/$agentId/': typeof AuthenticatedAgentsAgentAgentIdIndexRoute
@@ -341,11 +389,16 @@ export interface FileRouteTypes {
     | '/plugins'
     | '/skills'
     | '/agents/defaults'
+    | '/cron/settings'
+    | '/gateway/settings'
+    | '/hooks/settings'
     | '/agents/'
     | '/channels/'
+    | '/mcp/'
     | '/models/'
     | '/agents/agent/$agentId'
     | '/channels/channel/$channelId'
+    | '/mcp/server/$serverId'
     | '/models/provider/$providerId'
     | '/agents/agent/$agentId/bindings'
     | '/agents/agent/$agentId/'
@@ -367,14 +420,18 @@ export interface FileRouteTypes {
     | '/env'
     | '/gateway'
     | '/hooks'
-    | '/mcp'
     | '/plugins'
     | '/skills'
     | '/'
     | '/agents/defaults'
+    | '/cron/settings'
+    | '/gateway/settings'
+    | '/hooks/settings'
     | '/agents'
     | '/channels'
+    | '/mcp'
     | '/models'
+    | '/mcp/server/$serverId'
     | '/agents/agent/$agentId'
     | '/channels/channel/$channelId'
     | '/models/provider/$providerId'
@@ -403,11 +460,16 @@ export interface FileRouteTypes {
     | '/_authenticated/skills'
     | '/_authenticated/'
     | '/_authenticated/agents/defaults'
+    | '/_authenticated/cron/settings'
+    | '/_authenticated/gateway/settings'
+    | '/_authenticated/hooks/settings'
     | '/_authenticated/agents/'
     | '/_authenticated/channels/'
+    | '/_authenticated/mcp/'
     | '/_authenticated/models/'
     | '/_authenticated/agents/agent/$agentId'
     | '/_authenticated/channels/channel/$channelId'
+    | '/_authenticated/mcp/server/$serverId'
     | '/_authenticated/models/provider/$providerId'
     | '/_authenticated/agents/agent/$agentId/bindings'
     | '/_authenticated/agents/agent/$agentId/'
@@ -564,6 +626,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedModelsIndexRouteImport
       parentRoute: typeof AuthenticatedModelsRoute
     }
+    '/_authenticated/mcp/': {
+      id: '/_authenticated/mcp/'
+      path: '/'
+      fullPath: '/mcp/'
+      preLoaderRoute: typeof AuthenticatedMcpIndexRouteImport
+      parentRoute: typeof AuthenticatedMcpRoute
+    }
     '/_authenticated/channels/': {
       id: '/_authenticated/channels/'
       path: '/'
@@ -578,6 +647,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAgentsIndexRouteImport
       parentRoute: typeof AuthenticatedAgentsRoute
     }
+    '/_authenticated/hooks/settings': {
+      id: '/_authenticated/hooks/settings'
+      path: '/settings'
+      fullPath: '/hooks/settings'
+      preLoaderRoute: typeof AuthenticatedHooksSettingsRouteImport
+      parentRoute: typeof AuthenticatedHooksRoute
+    }
+    '/_authenticated/gateway/settings': {
+      id: '/_authenticated/gateway/settings'
+      path: '/settings'
+      fullPath: '/gateway/settings'
+      preLoaderRoute: typeof AuthenticatedGatewaySettingsRouteImport
+      parentRoute: typeof AuthenticatedGatewayRoute
+    }
+    '/_authenticated/cron/settings': {
+      id: '/_authenticated/cron/settings'
+      path: '/settings'
+      fullPath: '/cron/settings'
+      preLoaderRoute: typeof AuthenticatedCronSettingsRouteImport
+      parentRoute: typeof AuthenticatedCronRoute
+    }
     '/_authenticated/agents/defaults': {
       id: '/_authenticated/agents/defaults'
       path: '/defaults'
@@ -591,6 +681,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/models/provider/$providerId'
       preLoaderRoute: typeof AuthenticatedModelsProviderProviderIdRouteImport
       parentRoute: typeof AuthenticatedModelsRoute
+    }
+    '/_authenticated/mcp/server/$serverId': {
+      id: '/_authenticated/mcp/server/$serverId'
+      path: '/server/$serverId'
+      fullPath: '/mcp/server/$serverId'
+      preLoaderRoute: typeof AuthenticatedMcpServerServerIdRouteImport
+      parentRoute: typeof AuthenticatedMcpRoute
     }
     '/_authenticated/channels/channel/$channelId': {
       id: '/_authenticated/channels/channel/$channelId'
@@ -751,6 +848,52 @@ const AuthenticatedChannelsRouteWithChildren =
     AuthenticatedChannelsRouteChildren,
   )
 
+interface AuthenticatedCronRouteChildren {
+  AuthenticatedCronSettingsRoute: typeof AuthenticatedCronSettingsRoute
+}
+
+const AuthenticatedCronRouteChildren: AuthenticatedCronRouteChildren = {
+  AuthenticatedCronSettingsRoute: AuthenticatedCronSettingsRoute,
+}
+
+const AuthenticatedCronRouteWithChildren =
+  AuthenticatedCronRoute._addFileChildren(AuthenticatedCronRouteChildren)
+
+interface AuthenticatedGatewayRouteChildren {
+  AuthenticatedGatewaySettingsRoute: typeof AuthenticatedGatewaySettingsRoute
+}
+
+const AuthenticatedGatewayRouteChildren: AuthenticatedGatewayRouteChildren = {
+  AuthenticatedGatewaySettingsRoute: AuthenticatedGatewaySettingsRoute,
+}
+
+const AuthenticatedGatewayRouteWithChildren =
+  AuthenticatedGatewayRoute._addFileChildren(AuthenticatedGatewayRouteChildren)
+
+interface AuthenticatedHooksRouteChildren {
+  AuthenticatedHooksSettingsRoute: typeof AuthenticatedHooksSettingsRoute
+}
+
+const AuthenticatedHooksRouteChildren: AuthenticatedHooksRouteChildren = {
+  AuthenticatedHooksSettingsRoute: AuthenticatedHooksSettingsRoute,
+}
+
+const AuthenticatedHooksRouteWithChildren =
+  AuthenticatedHooksRoute._addFileChildren(AuthenticatedHooksRouteChildren)
+
+interface AuthenticatedMcpRouteChildren {
+  AuthenticatedMcpIndexRoute: typeof AuthenticatedMcpIndexRoute
+  AuthenticatedMcpServerServerIdRoute: typeof AuthenticatedMcpServerServerIdRoute
+}
+
+const AuthenticatedMcpRouteChildren: AuthenticatedMcpRouteChildren = {
+  AuthenticatedMcpIndexRoute: AuthenticatedMcpIndexRoute,
+  AuthenticatedMcpServerServerIdRoute: AuthenticatedMcpServerServerIdRoute,
+}
+
+const AuthenticatedMcpRouteWithChildren =
+  AuthenticatedMcpRoute._addFileChildren(AuthenticatedMcpRouteChildren)
+
 interface AuthenticatedModelsProviderProviderIdRouteChildren {
   AuthenticatedModelsProviderProviderIdIndexRoute: typeof AuthenticatedModelsProviderProviderIdIndexRoute
   AuthenticatedModelsProviderProviderIdModelModelIdRoute: typeof AuthenticatedModelsProviderProviderIdModelModelIdRoute
@@ -786,11 +929,11 @@ const AuthenticatedModelsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgentsRoute: typeof AuthenticatedAgentsRouteWithChildren
   AuthenticatedChannelsRoute: typeof AuthenticatedChannelsRouteWithChildren
-  AuthenticatedCronRoute: typeof AuthenticatedCronRoute
+  AuthenticatedCronRoute: typeof AuthenticatedCronRouteWithChildren
   AuthenticatedEnvRoute: typeof AuthenticatedEnvRoute
-  AuthenticatedGatewayRoute: typeof AuthenticatedGatewayRoute
-  AuthenticatedHooksRoute: typeof AuthenticatedHooksRoute
-  AuthenticatedMcpRoute: typeof AuthenticatedMcpRoute
+  AuthenticatedGatewayRoute: typeof AuthenticatedGatewayRouteWithChildren
+  AuthenticatedHooksRoute: typeof AuthenticatedHooksRouteWithChildren
+  AuthenticatedMcpRoute: typeof AuthenticatedMcpRouteWithChildren
   AuthenticatedModelsRoute: typeof AuthenticatedModelsRouteWithChildren
   AuthenticatedPluginsRoute: typeof AuthenticatedPluginsRoute
   AuthenticatedSkillsRoute: typeof AuthenticatedSkillsRoute
@@ -800,11 +943,11 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAgentsRoute: AuthenticatedAgentsRouteWithChildren,
   AuthenticatedChannelsRoute: AuthenticatedChannelsRouteWithChildren,
-  AuthenticatedCronRoute: AuthenticatedCronRoute,
+  AuthenticatedCronRoute: AuthenticatedCronRouteWithChildren,
   AuthenticatedEnvRoute: AuthenticatedEnvRoute,
-  AuthenticatedGatewayRoute: AuthenticatedGatewayRoute,
-  AuthenticatedHooksRoute: AuthenticatedHooksRoute,
-  AuthenticatedMcpRoute: AuthenticatedMcpRoute,
+  AuthenticatedGatewayRoute: AuthenticatedGatewayRouteWithChildren,
+  AuthenticatedHooksRoute: AuthenticatedHooksRouteWithChildren,
+  AuthenticatedMcpRoute: AuthenticatedMcpRouteWithChildren,
   AuthenticatedModelsRoute: AuthenticatedModelsRouteWithChildren,
   AuthenticatedPluginsRoute: AuthenticatedPluginsRoute,
   AuthenticatedSkillsRoute: AuthenticatedSkillsRoute,

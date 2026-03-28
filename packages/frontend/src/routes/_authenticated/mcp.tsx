@@ -1,6 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { McpPage } from '@/features/openclaw/mcp-page'
+import { Outlet, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated/mcp')({
-  component: McpPage,
+  component: Outlet,
 })

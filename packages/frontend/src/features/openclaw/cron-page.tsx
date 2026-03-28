@@ -1,3 +1,3 @@
-import { createGenericSectionPage } from './create-section-page'
+import { createSettingsShellPage } from './create-settings-shell-page'
 
-export const CronPage = createGenericSectionPage('cron')
+export const CronPage = createSettingsShellPage('cron')

@@ -10,6 +10,8 @@ import {
   getEnvironmentStatus,
   getAutoClawSettings,
   initializeAutoClawConfig,
+  getOpenClawEnvFile,
+  getOpenClawAgentSkillsCatalog,
   getOpenClawAgentsSection,
   getOpenClawBackupContent,
   getOpenClawChannelsSection,
@@ -17,6 +19,8 @@ import {
   getOpenClawGenericSection,
   getOpenClawModelsSection,
   getOpenClawServiceStatus,
+  getOpenClawSkillContent,
+  getOpenClawSkillsCatalog,
   isCoreError,
   listEnvironments,
   listOpenClawBackups,
@@ -29,6 +33,7 @@ import {
   updateGlobalSettings,
   updateOpenClawAgentsSection,
   updateOpenClawChannelsSection,
+  updateOpenClawEnvFile,
   updateOpenClawGenericSection,
   updateOpenClawModelsSection,
 } from '@auto-code/core'
@@ -287,6 +292,46 @@ app.put('/api/environments/:id/config/agents', async (c) => {
   })
 
   return c.json({ data })
+})
+
+app.get('/api/environments/:id/env-file', async (c) => {
+  const data = await getOpenClawEnvFile(c.req.param('id'))
+  return c.json(data)
+})
+
+app.put('/api/environments/:id/env-file', async (c) => {
+  const body = jsonBody<{ rows?: Array<{ key?: string; value?: string }> }>(
+    await c.req.json()
+  )
+  const data = await updateOpenClawEnvFile(
+    c.req.param('id'),
+    Array.isArray(body.rows)
+      ? body.rows.map((row) => ({
+          key: typeof row?.key === 'string' ? row.key : '',
+          value: typeof row?.value === 'string' ? row.value : '',
+        }))
+      : []
+  )
+  return c.json(data)
+})
+
+app.get('/api/environments/:id/skills/catalog', async (c) => {
+  const data = await getOpenClawSkillsCatalog(c.req.param('id'))
+  return c.json(data)
+})
+
+app.get('/api/environments/:id/agents/:agentId/skills/catalog', async (c) => {
+  const data = await getOpenClawAgentSkillsCatalog(
+    c.req.param('id'),
+    c.req.param('agentId')
+  )
+  return c.json(data)
+})
+
+app.get('/api/environments/:id/skills/content', async (c) => {
+  const path = c.req.query('path') ?? ''
+  const data = await getOpenClawSkillContent(c.req.param('id'), path)
+  return c.json(data)
 })
 
 for (const section of genericSectionKeys) {

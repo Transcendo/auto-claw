@@ -119,6 +119,44 @@ export type OpenClawBackupRecord = {
   size: number
 }
 
+export type OpenClawKeyValueRow = {
+  key: string
+  value: string
+}
+
+export type OpenClawEnvFilePayload = {
+  path: string
+  exists: boolean
+  rows: OpenClawKeyValueRow[]
+  raw: string
+}
+
+export type OpenClawSkillCatalogItem = {
+  id: string
+  name: string
+  path: string
+  summary?: string
+  sourceType: 'environment' | 'workspace' | 'user'
+  sourceLabel: string
+}
+
+export type OpenClawSkillCatalogGroup = {
+  id: string
+  title: string
+  path: string
+  sourceType: 'environment' | 'workspace' | 'user'
+  items: OpenClawSkillCatalogItem[]
+}
+
+export type OpenClawSkillCatalogPayload = {
+  groups: OpenClawSkillCatalogGroup[]
+}
+
+export type OpenClawSkillContentPayload = {
+  item: OpenClawSkillCatalogItem
+  content: string
+}
+
 export type OpenClawModelsSection = Record<string, unknown>
 export type OpenClawChannelsSection = Record<string, unknown>
 export type OpenClawGenericSection = Record<string, unknown>

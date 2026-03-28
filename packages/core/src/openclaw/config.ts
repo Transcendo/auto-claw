@@ -1,4 +1,5 @@
 import { basename, join, resolve } from 'node:path'
+import process from 'node:process'
 import {
   copyFile,
   mkdir,
@@ -24,8 +25,14 @@ import type {
   OpenClawBackupRecord,
   OpenClawChannelsSection,
   OpenClawConfigSectionKey,
+  OpenClawEnvFilePayload,
   OpenClawGenericSection,
+  OpenClawKeyValueRow,
   OpenClawModelsSection,
+  OpenClawSkillCatalogGroup,
+  OpenClawSkillCatalogItem,
+  OpenClawSkillCatalogPayload,
+  OpenClawSkillContentPayload,
 } from './types'
 
 type OpenClawDocument = Record<string, unknown>
@@ -52,6 +59,10 @@ type OpenClawGenericSectionKey = (typeof GENERIC_OBJECT_SECTION_KEYS)[number]
 
 function toConfigPath(openclawPath: string) {
   return resolve(openclawPath, 'openclaw.json')
+}
+
+function toEnvFilePath(openclawPath: string) {
+  return resolve(openclawPath, '.env')
 }
 
 function toBackupFilename(version: number) {
@@ -88,6 +99,173 @@ function sanitizeUnknownObject(value: unknown) {
 
 function sanitizeUnknownArray(value: unknown) {
   return Array.isArray(value) ? value : []
+}
+
+function readWorkspacePathFromDocument(
+  openclawPath: string,
+  document: OpenClawDocument
+) {
+  const agents = sanitizeUnknownObject(document.agents)
+  const defaults = sanitizeUnknownObject(agents.defaults)
+  const workspace = defaults.workspace
+
+  return typeof workspace === 'string' && workspace.trim()
+    ? resolve(workspace)
+    : resolve(openclawPath, 'workspace')
+}
+
+function resolveStateDirFromEnv() {
+  const stateDir = process.env.OPENCLAW_STATE_DIR?.trim()
+  if (stateDir) {
+    return resolve(stateDir.replace(/^~/, process.env.OPENCLAW_HOME ?? process.env.HOME ?? ''))
+  }
+
+  const homeDir = process.env.OPENCLAW_HOME ?? process.env.HOME ?? ''
+  return resolve(homeDir, '.openclaw')
+}
+
+function resolveDefaultAgentWorkspaceDirFromEnv() {
+  const profile = process.env.OPENCLAW_PROFILE?.trim()
+  const stateDir = resolveStateDirFromEnv()
+
+  if (profile && profile.toLowerCase() !== 'default') {
+    return resolve(stateDir, `workspace-${profile}`)
+  }
+
+  return resolve(stateDir, 'workspace')
+}
+
+function normalizeAgentId(input: string) {
+  const trimmed = input.trim().toLowerCase()
+  return trimmed || 'main'
+}
+
+function listAgentEntriesFromDocument(document: OpenClawDocument) {
+  const agents = sanitizeUnknownObject(document.agents)
+  const list = sanitizeUnknownArray(agents.list)
+  return list.map((entry) => sanitizeUnknownObject(entry))
+}
+
+function resolveDefaultAgentIdFromDocument(document: OpenClawDocument) {
+  const entries = listAgentEntriesFromDocument(document)
+  if (entries.length === 0) {
+    return 'main'
+  }
+
+  const defaultEntry
+    = entries.find((entry) => entry.default === true) ?? entries[0]
+  return normalizeAgentId(typeof defaultEntry.id === 'string' ? defaultEntry.id : '')
+}
+
+function resolveAgentWorkspacePathFromDocument(
+  document: OpenClawDocument,
+  agentId: string
+) {
+  const normalizedAgentId = normalizeAgentId(agentId)
+  const agentEntry = listAgentEntriesFromDocument(document).find((entry) => {
+    return normalizeAgentId(typeof entry.id === 'string' ? entry.id : '') === normalizedAgentId
+  })
+  const explicitWorkspace = typeof agentEntry?.workspace === 'string'
+    ? agentEntry.workspace.trim()
+    : ''
+
+  if (explicitWorkspace) {
+    return resolve(explicitWorkspace)
+  }
+
+  const defaultAgentId = resolveDefaultAgentIdFromDocument(document)
+  if (normalizedAgentId === defaultAgentId) {
+    const defaults = sanitizeUnknownObject(sanitizeUnknownObject(document.agents).defaults)
+    const fallbackWorkspace = typeof defaults.workspace === 'string'
+      ? defaults.workspace.trim()
+      : ''
+
+    if (fallbackWorkspace) {
+      return resolve(fallbackWorkspace)
+    }
+
+    return resolveDefaultAgentWorkspaceDirFromEnv()
+  }
+
+  return resolve(resolveStateDirFromEnv(), `workspace-${normalizedAgentId}`)
+}
+
+function parseEnvFile(raw: string): OpenClawKeyValueRow[] {
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !line.startsWith('#'))
+    .map((line) => {
+      const separatorIndex = line.indexOf('=')
+      if (separatorIndex < 0) {
+        return {
+          key: line,
+          value: '',
+        }
+      }
+
+      return {
+        key: line.slice(0, separatorIndex).trim(),
+        value: line.slice(separatorIndex + 1),
+      }
+    })
+    .filter((row) => row.key.trim() !== '')
+}
+
+function serializeEnvFile(rows: OpenClawKeyValueRow[]) {
+  const normalizedRows = rows
+    .map((row) => ({
+      key: row.key.trim(),
+      value: row.value,
+    }))
+    .filter((row) => row.key !== '')
+
+  if (normalizedRows.length === 0) {
+    return ''
+  }
+
+  return `${normalizedRows.map((row) => `${row.key}=${row.value}`).join('\n')}\n`
+}
+
+async function listSkillItemsInRoot(
+  rootPath: string,
+  sourceType: OpenClawSkillCatalogItem['sourceType'],
+  sourceLabel: string
+) {
+  if (!existsSync(rootPath)) {
+    return [] as OpenClawSkillCatalogItem[]
+  }
+
+  const entries = await readdir(rootPath, { withFileTypes: true })
+  const items: OpenClawSkillCatalogItem[] = []
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue
+    }
+
+    const skillPath = join(rootPath, entry.name, 'SKILL.md')
+    if (!existsSync(skillPath)) {
+      continue
+    }
+
+    const content = await readFile(skillPath, 'utf8')
+    const summaryLine = content
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line !== '' && !line.startsWith('#'))
+
+    items.push({
+      id: skillPath,
+      name: entry.name,
+      path: skillPath,
+      summary: summaryLine,
+      sourceType,
+      sourceLabel,
+    })
+  }
+
+  return items.sort((left, right) => left.name.localeCompare(right.name))
 }
 
 async function readConfigDocumentByPath(configPath: string) {
@@ -331,6 +509,146 @@ export async function updateOpenClawGenericSection(
 
   await writeConfigDocumentWithBackup(environment.openclawPath, nextDocument)
   return value
+}
+
+export async function getOpenClawEnvFile(
+  environmentId: string
+): Promise<OpenClawEnvFilePayload> {
+  const environment = getEnvironmentById(environmentId)
+  const envFilePath = toEnvFilePath(environment.openclawPath)
+
+  if (!existsSync(envFilePath)) {
+    return {
+      path: envFilePath,
+      exists: false,
+      rows: [],
+      raw: '',
+    }
+  }
+
+  const raw = await readFile(envFilePath, 'utf8')
+  return {
+    path: envFilePath,
+    exists: true,
+    rows: parseEnvFile(raw),
+    raw,
+  }
+}
+
+export async function updateOpenClawEnvFile(
+  environmentId: string,
+  rows: OpenClawKeyValueRow[]
+): Promise<OpenClawEnvFilePayload> {
+  const environment = getEnvironmentById(environmentId)
+  const envFilePath = toEnvFilePath(environment.openclawPath)
+  const raw = serializeEnvFile(rows)
+
+  await writeFile(envFilePath, raw, 'utf8')
+
+  return {
+    path: envFilePath,
+    exists: true,
+    rows: parseEnvFile(raw),
+    raw,
+  }
+}
+
+export async function getOpenClawSkillsCatalog(
+  environmentId: string
+): Promise<OpenClawSkillCatalogPayload> {
+  const { environment, document } = await readEnvironmentConfigDocument(environmentId)
+  const workspacePath = readWorkspacePathFromDocument(
+    environment.openclawPath,
+    document
+  )
+
+  const groupDefinitions = [
+    {
+      id: 'environment-skills',
+      title: 'Environment Skills',
+      path: resolve(environment.openclawPath, 'skills'),
+      sourceType: 'environment' as const,
+      sourceLabel: 'Environment skills',
+    },
+    {
+      id: 'workspace-skills',
+      title: 'Workspace Skills',
+      path: resolve(workspacePath, 'skills'),
+      sourceType: 'workspace' as const,
+      sourceLabel: 'Workspace skills',
+    },
+    {
+      id: 'user-skills',
+      title: 'User Skills',
+      path: resolve('~/.agents/skills'.replace(/^~/, process.env.HOME ?? '')),
+      sourceType: 'user' as const,
+      sourceLabel: 'User skills',
+    },
+  ]
+
+  const groups: OpenClawSkillCatalogGroup[] = []
+  for (const definition of groupDefinitions) {
+    groups.push({
+      id: definition.id,
+      title: definition.title,
+      path: definition.path,
+      sourceType: definition.sourceType,
+      items: await listSkillItemsInRoot(
+        definition.path,
+        definition.sourceType,
+        definition.sourceLabel
+      ),
+    })
+  }
+
+  return { groups }
+}
+
+export async function getOpenClawAgentSkillsCatalog(
+  environmentId: string,
+  agentId: string
+): Promise<OpenClawSkillCatalogPayload> {
+  const { document } = await readEnvironmentConfigDocument(environmentId)
+  const workspacePath = resolveAgentWorkspacePathFromDocument(document, agentId)
+
+  return {
+    groups: [
+      {
+        id: `agent-workspace-skills:${normalizeAgentId(agentId)}`,
+        title: 'Workspace Skills',
+        path: resolve(workspacePath, 'skills'),
+        sourceType: 'workspace',
+        items: await listSkillItemsInRoot(
+          resolve(workspacePath, 'skills'),
+          'workspace',
+          'Workspace skills'
+        ),
+      },
+    ],
+  }
+}
+
+export async function getOpenClawSkillContent(
+  environmentId: string,
+  skillPath: string
+): Promise<OpenClawSkillContentPayload> {
+  const catalog = await getOpenClawSkillsCatalog(environmentId)
+  const item = catalog.groups
+    .flatMap((group) => group.items)
+    .find((entry) => resolve(entry.path) === resolve(skillPath))
+
+  if (!item) {
+    throw new CoreError({
+      statusCode: 404,
+      title: 'Skill Not Found',
+      message: 'The requested skill file was not found in the allowed skill roots',
+    })
+  }
+
+  return {
+    item,
+    content: await readFile(item.path, 'utf8'),
+  }
 }
 
 export async function getOpenClawAgentsSection(

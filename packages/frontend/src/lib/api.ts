@@ -9,12 +9,16 @@ import type {
   OpenClawChannelsSection,
   OpenClawConfigMetadata,
   OpenClawConfigSectionKey,
+  OpenClawEnvFilePayload,
   OpenClawGenericSection,
+  OpenClawKeyValueRow,
   OpenClawModelsSection,
   OpenClawServiceAction,
   OpenClawServiceActionResult,
   OpenClawServiceStatus,
   OpenClawVersionCheckResult,
+  OpenClawSkillCatalogPayload,
+  OpenClawSkillContentPayload,
 } from '@/types/openclaw'
 
 export const api = axios.create({
@@ -101,6 +105,52 @@ export async function updateGenericConfigSection(
     { data: payload }
   )
   return data.data
+}
+
+export async function fetchEnvFile(environmentId: string) {
+  const { data } = await api.get<OpenClawEnvFilePayload>(
+    `/environments/${environmentId}/env-file`
+  )
+  return data
+}
+
+export async function updateEnvFile(
+  environmentId: string,
+  rows: OpenClawKeyValueRow[]
+) {
+  const { data } = await api.put<OpenClawEnvFilePayload>(
+    `/environments/${environmentId}/env-file`,
+    { rows }
+  )
+  return data
+}
+
+export async function fetchSkillsCatalog(environmentId: string) {
+  const { data } = await api.get<OpenClawSkillCatalogPayload>(
+    `/environments/${environmentId}/skills/catalog`
+  )
+  return data
+}
+
+export async function fetchAgentSkillsCatalog(
+  environmentId: string,
+  agentId: string
+) {
+  const { data } = await api.get<OpenClawSkillCatalogPayload>(
+    `/environments/${environmentId}/agents/${agentId}/skills/catalog`
+  )
+  return data
+}
+
+export async function fetchSkillContent(
+  environmentId: string,
+  path: string
+) {
+  const { data } = await api.get<OpenClawSkillContentPayload>(
+    `/environments/${environmentId}/skills/content`,
+    { params: { path } }
+  )
+  return data
 }
 
 export async function fetchModelsSection(environmentId: string) {

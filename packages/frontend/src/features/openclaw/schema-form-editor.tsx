@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { OpenClawJsonSchemaNode } from '@/types/openclaw'
 import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { KeyValueTableEditor } from '@/components/config-builder'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -108,6 +109,69 @@ function pathIsHidden(path: string, hiddenPaths: string[]) {
   )
 }
 
+function isPrimitiveType(type: string) {
+  return (
+    type === 'string' ||
+    type === 'number' ||
+    type === 'integer' ||
+    type === 'boolean'
+  )
+}
+
+function isPrimitiveMapSchema(schema: OpenClawJsonSchemaNode) {
+  const propertyKeys = Object.keys(schema.properties ?? {})
+  if (propertyKeys.length > 0) {
+    return false
+  }
+
+  const additionalProperties = schema.additionalProperties
+  if (!additionalProperties || typeof additionalProperties === 'boolean') {
+    return false
+  }
+
+  const valueTypes = normalizeTypes(additionalProperties.type)
+  return valueTypes.length > 0 && valueTypes.every(isPrimitiveType)
+}
+
+function formatPrimitiveMapValue(value: unknown) {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+
+  return ''
+}
+
+function parsePrimitiveMapValue(
+  value: string,
+  schema: OpenClawJsonSchemaNode | undefined
+) {
+  const valueTypes = normalizeTypes(schema?.type)
+
+  if (
+    valueTypes.length === 1 &&
+    (valueTypes[0] === 'number' || valueTypes[0] === 'integer')
+  ) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : value
+  }
+
+  if (valueTypes.length === 1 && valueTypes[0] === 'boolean') {
+    if (value === 'true') {
+      return true
+    }
+
+    if (value === 'false') {
+      return false
+    }
+  }
+
+  return value
+}
+
 function DynamicObjectEntry({
   entryKey,
   path,
@@ -191,6 +255,7 @@ function ObjectEditor({
 }: Required<SchemaFormEditorProps>) {
   const objectValue = isPlainObject(value) ? value : {}
   const fixedProperties = schema.properties ?? {}
+  const primitiveMapMode = isPrimitiveMapSchema(schema)
   const requiredKeys = new Set(schema.required ?? [])
   const visibleFixedKeys = Object.keys(fixedProperties).filter((key) => {
     const nextPath = `${path}.${key}`
@@ -227,6 +292,38 @@ function ObjectEditor({
     (!showAllFields && missingFixedKeys.length > 0) ||
     schema.additionalProperties === true ||
     Boolean(addableDynamicSchema)
+
+  if (primitiveMapMode) {
+    const valueSchema =
+      typeof schema.additionalProperties === 'object'
+        ? schema.additionalProperties
+        : undefined
+
+    return (
+      <KeyValueTableEditor
+        rows={Object.entries(objectValue).map(([key, entryValue]) => ({
+          key,
+          value: formatPrimitiveMapValue(entryValue),
+        }))}
+        onChange={(rows) => {
+          const nextValue = Object.fromEntries(
+            rows
+              .map((row) => ({
+                key: row.key.trim(),
+                value: row.value,
+              }))
+              .filter((row) => row.key !== '')
+              .map((row) => [
+                row.key,
+                parsePrimitiveMapValue(row.value, valueSchema),
+              ])
+          )
+
+          onChange(nextValue)
+        }}
+      />
+    )
+  }
 
   return (
     <div

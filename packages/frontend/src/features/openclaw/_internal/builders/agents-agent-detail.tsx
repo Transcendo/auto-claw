@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { getObjectPropertySchema } from '@/lib/json-schema'
+import { fetchAgentSkillsCatalog } from '@/lib/api'
+import { useEnvironmentContext } from '@/context/environment-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DetailFormRow,
   DetailFormSection,
@@ -36,6 +40,7 @@ import {
 } from '../lib/form-fields'
 import { AgentModelFields } from './agent-model-fields'
 import { AgentSubagentsFields } from './agent-subagents-fields'
+import { SkillCatalogBrowser } from '../../skill-catalog-browser'
 
 type AgentsAgentDetailProps = {
   routeAgentId: string
@@ -45,6 +50,7 @@ export function AgentsAgentDetail({
   routeAgentId,
 }: AgentsAgentDetailProps) {
   const navigate = useNavigate()
+  const { selectedEnvironmentId, environmentStatus } = useEnvironmentContext()
   const {
     value,
     onChange,
@@ -64,6 +70,7 @@ export function AgentsAgentDetail({
   )
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [agentIdInput, setAgentIdInput] = useState(currentAgentId)
+  const [activeTab, setActiveTab] = useState('details')
 
   useEffect(() => {
     setAgentIdInput(currentAgentId)
@@ -159,6 +166,14 @@ export function AgentsAgentDetail({
         : null
     })
     .filter((item): item is { label: string; value: string } => item !== null)
+  const agentSkillsQuery = useQuery({
+    queryKey: ['agent-skills-catalog', selectedEnvironmentId, currentAgentId],
+    queryFn: () =>
+      fetchAgentSkillsCatalog(selectedEnvironmentId as string, currentAgentId),
+    enabled:
+      Boolean(selectedEnvironmentId) &&
+      environmentStatus?.canLoadConfig === true,
+  })
 
   return (
     <DetailPageShell
@@ -193,268 +208,288 @@ export function AgentsAgentDetail({
         </>
       )}
     >
-      <DetailFormSection
-        advancedOpen={advancedOpen}
-        onAdvancedOpenChange={setAdvancedOpen}
-        advancedChildren={
-          <div className='space-y-4'>
-            <AgentSubagentsFields
-              pathPrefix={`agents.list[${agentIndex}].subagents`}
-              value={agent.subagents}
-              metadataMap={metadataMap}
-              schema={subagentsSchema}
-              agentOptions={agentOptions}
-              onChange={(nextValue) =>
-                updateAgent((currentAgent) => ({
-                  ...currentAgent,
-                  subagents: nextValue,
-                }))
-              }
-            />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className='space-y-4'>
+        <TabsList>
+          <TabsTrigger value='details'>Details</TabsTrigger>
+          <TabsTrigger value='skills'>Skills</TabsTrigger>
+        </TabsList>
 
-            <SchemaFormEditor
-              path={`agents.list[${agentIndex}]`}
-              schema={agentSchema}
-              value={agent}
-              onChange={(nextValue) => updateAgent(asObject(nextValue))}
-              layout='compact'
-              descriptionMode='tooltip'
-              hiddenPaths={[
-                `agents.list[${agentIndex}].default`,
-                `agents.list[${agentIndex}].id`,
-                `agents.list[${agentIndex}].name`,
-                `agents.list[${agentIndex}].model`,
-                `agents.list[${agentIndex}].workspace`,
-                `agents.list[${agentIndex}].agentDir`,
-                `agents.list[${agentIndex}].thinkingDefault`,
-                `agents.list[${agentIndex}].reasoningDefault`,
-                `agents.list[${agentIndex}].fastModeDefault`,
-                `agents.list[${agentIndex}].humanDelay`,
-                `agents.list[${agentIndex}].subagents`,
-              ]}
-              compactFieldLayout='inline'
-              compactBooleanColumns
-            />
-          </div>
-        }
-      >
-        <div className='grid gap-x-8 gap-y-0 xl:grid-cols-2'>
-          <DetailFormRow
-            label='ID'
-            description={getMetadataDescription(metadataMap, 'agents.list.*.id')}
-          >
-            <Input
-              value={agentIdInput}
-              onChange={(event) => setAgentIdInput(event.target.value)}
-              onBlur={commitAgentId}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  commitAgentId()
-                }
-              }}
-            />
-          </DetailFormRow>
-
-          <DetailFormRow
-            label='Name'
-            description={getMetadataDescription(metadataMap, 'agents.list.*.name')}
-          >
-            <Input
-              value={readInputValue(agent.name)}
-              onChange={(event) =>
-                updateAgent((currentAgent) =>
-                  setOptionalStringValue(currentAgent, 'name', event.target.value)
-                )
-              }
-            />
-          </DetailFormRow>
-
-          <DetailFormRow
-            label='Model'
-            description={getMetadataDescription(metadataMap, 'agents.list.*.model')}
-            className='xl:col-span-2'
-          >
-            <div className='grid gap-x-8 gap-y-0 xl:grid-cols-2'>
-              <AgentModelFields
-                labelPathPrefix='agents.list.*.model'
-                value={agent.model}
-                metadataMap={metadataMap}
-                onChange={(nextValue) =>
-                  updateAgent((currentAgent) => ({
-                    ...currentAgent,
-                    model: nextValue,
-                  }))
-                }
-              />
-            </div>
-          </DetailFormRow>
-
-          <DetailFormRow
-            label='Workspace'
-            description={getMetadataDescription(
-              metadataMap,
-              'agents.list.*.workspace'
-            )}
-          >
-            <Input
-              value={readInputValue(agent.workspace)}
-              onChange={(event) =>
-                updateAgent((currentAgent) =>
-                  setOptionalStringValue(
-                    currentAgent,
-                    'workspace',
-                    event.target.value
-                  )
-                )
-              }
-            />
-          </DetailFormRow>
-
-          <DetailFormRow
-            label='Agent Dir'
-            description={getMetadataDescription(
-              metadataMap,
-              'agents.list.*.agentDir'
-            )}
-          >
-            <Input
-              value={readInputValue(agent.agentDir)}
-              onChange={(event) =>
-                updateAgent((currentAgent) =>
-                  setOptionalStringValue(
-                    currentAgent,
-                    'agentDir',
-                    event.target.value
-                  )
-                )
-              }
-            />
-          </DetailFormRow>
-
-          <DetailFormRow
-            label='Thinking Default'
-            description={getMetadataDescription(
-              metadataMap,
-              'agents.list.*.thinkingDefault'
-            )}
-          >
-            <SingleSelectField
-              options={getEnumOptions(metadataMap, 'agents.list.*.thinkingDefault')}
-              value={readInputValue(agent.thinkingDefault)}
-              onChange={(nextValue) =>
-                updateAgent((currentAgent) => ({
-                  ...currentAgent,
-                  thinkingDefault: nextValue,
-                }))
-              }
-              placeholder='Select thinking level'
-            />
-          </DetailFormRow>
-
-          <DetailFormRow
-            label='Reasoning Default'
-            description={getMetadataDescription(
-              metadataMap,
-              'agents.list.*.reasoningDefault'
-            )}
-          >
-            <SingleSelectField
-              options={getEnumOptions(metadataMap, 'agents.list.*.reasoningDefault')}
-              value={readInputValue(agent.reasoningDefault)}
-              onChange={(nextValue) =>
-                updateAgent((currentAgent) => ({
-                  ...currentAgent,
-                  reasoningDefault: nextValue,
-                }))
-              }
-              placeholder='Select reasoning mode'
-            />
-          </DetailFormRow>
-
-          <DetailFormRow
-            label='Fast Mode Default'
-            description={getMetadataDescription(
-              metadataMap,
-              'agents.list.*.fastModeDefault'
-            )}
-          >
-            <div className='flex justify-end'>
-              <Switch
-                checked={readBooleanInputValue(agent.fastModeDefault, false)}
-                onCheckedChange={(checked) =>
-                  updateAgent((currentAgent) =>
-                    setBooleanValue(currentAgent, 'fastModeDefault', checked)
-                  )
-                }
-              />
-            </div>
-          </DetailFormRow>
-
-          <DetailFormRow
-            label='Human Delay'
-            description={getMetadataDescription(
-              metadataMap,
-              'agents.list.*.humanDelay'
-            )}
-            className='xl:col-span-2'
-          >
-            <div className='grid gap-3 md:grid-cols-3'>
-              <div className='space-y-2'>
-                <Label className='text-xs text-muted-foreground'>Min Ms</Label>
-                <Input
-                  type='number'
-                  value={readNumberInputValue(humanDelay.minMs)}
-                  onChange={(event) =>
-                    updateAgent((currentAgent) => ({
-                      ...currentAgent,
-                      humanDelay: setOptionalNumberValue(
-                        asObject(currentAgent.humanDelay),
-                        'minMs',
-                        event.target.value
-                      ),
-                    }))
-                  }
-                />
-              </div>
-              <div className='space-y-2'>
-                <Label className='text-xs text-muted-foreground'>Max Ms</Label>
-                <Input
-                  type='number'
-                  value={readNumberInputValue(humanDelay.maxMs)}
-                  onChange={(event) =>
-                    updateAgent((currentAgent) => ({
-                      ...currentAgent,
-                      humanDelay: setOptionalNumberValue(
-                        asObject(currentAgent.humanDelay),
-                        'maxMs',
-                        event.target.value
-                      ),
-                    }))
-                  }
-                />
-              </div>
-              <div className='space-y-2'>
-                <Label className='text-xs text-muted-foreground'>Mode</Label>
-                <SingleSelectField
-                  options={getEnumOptions(metadataMap, 'agents.list.*.humanDelay.mode')}
-                  value={readInputValue(humanDelay.mode)}
+        <TabsContent value='details' className='space-y-4'>
+          <DetailFormSection
+            advancedOpen={advancedOpen}
+            onAdvancedOpenChange={setAdvancedOpen}
+            advancedChildren={
+              <div className='space-y-4'>
+                <AgentSubagentsFields
+                  pathPrefix={`agents.list[${agentIndex}].subagents`}
+                  value={agent.subagents}
+                  metadataMap={metadataMap}
+                  schema={subagentsSchema}
+                  agentOptions={agentOptions}
                   onChange={(nextValue) =>
                     updateAgent((currentAgent) => ({
                       ...currentAgent,
-                      humanDelay: {
-                        ...asObject(currentAgent.humanDelay),
-                        mode: nextValue,
-                      },
+                      subagents: nextValue,
                     }))
                   }
-                  placeholder='Select delay mode'
+                />
+
+                <SchemaFormEditor
+                  path={`agents.list[${agentIndex}]`}
+                  schema={agentSchema}
+                  value={agent}
+                  onChange={(nextValue) => updateAgent(asObject(nextValue))}
+                  layout='compact'
+                  descriptionMode='tooltip'
+                  hiddenPaths={[
+                    `agents.list[${agentIndex}].default`,
+                    `agents.list[${agentIndex}].id`,
+                    `agents.list[${agentIndex}].name`,
+                    `agents.list[${agentIndex}].model`,
+                    `agents.list[${agentIndex}].workspace`,
+                    `agents.list[${agentIndex}].agentDir`,
+                    `agents.list[${agentIndex}].thinkingDefault`,
+                    `agents.list[${agentIndex}].reasoningDefault`,
+                    `agents.list[${agentIndex}].fastModeDefault`,
+                    `agents.list[${agentIndex}].humanDelay`,
+                    `agents.list[${agentIndex}].subagents`,
+                  ]}
+                  compactFieldLayout='inline'
+                  compactBooleanColumns
                 />
               </div>
+            }
+          >
+            <div className='grid gap-x-8 gap-y-0 xl:grid-cols-2'>
+              <DetailFormRow
+                label='ID'
+                description={getMetadataDescription(metadataMap, 'agents.list.*.id')}
+              >
+                <Input
+                  value={agentIdInput}
+                  onChange={(event) => setAgentIdInput(event.target.value)}
+                  onBlur={commitAgentId}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      commitAgentId()
+                    }
+                  }}
+                />
+              </DetailFormRow>
+
+              <DetailFormRow
+                label='Name'
+                description={getMetadataDescription(metadataMap, 'agents.list.*.name')}
+              >
+                <Input
+                  value={readInputValue(agent.name)}
+                  onChange={(event) =>
+                    updateAgent((currentAgent) =>
+                      setOptionalStringValue(currentAgent, 'name', event.target.value)
+                    )
+                  }
+                />
+              </DetailFormRow>
+
+              <DetailFormRow
+                label='Model'
+                description={getMetadataDescription(metadataMap, 'agents.list.*.model')}
+                className='xl:col-span-2'
+              >
+                <div className='grid gap-x-8 gap-y-0 xl:grid-cols-2'>
+                  <AgentModelFields
+                    labelPathPrefix='agents.list.*.model'
+                    value={agent.model}
+                    metadataMap={metadataMap}
+                    onChange={(nextValue) =>
+                      updateAgent((currentAgent) => ({
+                        ...currentAgent,
+                        model: nextValue,
+                      }))
+                    }
+                  />
+                </div>
+              </DetailFormRow>
+
+              <DetailFormRow
+                label='Workspace'
+                description={getMetadataDescription(
+                  metadataMap,
+                  'agents.list.*.workspace'
+                )}
+              >
+                <Input
+                  value={readInputValue(agent.workspace)}
+                  onChange={(event) =>
+                    updateAgent((currentAgent) =>
+                      setOptionalStringValue(
+                        currentAgent,
+                        'workspace',
+                        event.target.value
+                      )
+                    )
+                  }
+                />
+              </DetailFormRow>
+
+              <DetailFormRow
+                label='Agent Dir'
+                description={getMetadataDescription(
+                  metadataMap,
+                  'agents.list.*.agentDir'
+                )}
+              >
+                <Input
+                  value={readInputValue(agent.agentDir)}
+                  onChange={(event) =>
+                    updateAgent((currentAgent) =>
+                      setOptionalStringValue(
+                        currentAgent,
+                        'agentDir',
+                        event.target.value
+                      )
+                    )
+                  }
+                />
+              </DetailFormRow>
+
+              <DetailFormRow
+                label='Thinking Default'
+                description={getMetadataDescription(
+                  metadataMap,
+                  'agents.list.*.thinkingDefault'
+                )}
+              >
+                <SingleSelectField
+                  options={getEnumOptions(metadataMap, 'agents.list.*.thinkingDefault')}
+                  value={readInputValue(agent.thinkingDefault)}
+                  onChange={(nextValue) =>
+                    updateAgent((currentAgent) => ({
+                      ...currentAgent,
+                      thinkingDefault: nextValue,
+                    }))
+                  }
+                  placeholder='Select thinking level'
+                />
+              </DetailFormRow>
+
+              <DetailFormRow
+                label='Reasoning Default'
+                description={getMetadataDescription(
+                  metadataMap,
+                  'agents.list.*.reasoningDefault'
+                )}
+              >
+                <SingleSelectField
+                  options={getEnumOptions(metadataMap, 'agents.list.*.reasoningDefault')}
+                  value={readInputValue(agent.reasoningDefault)}
+                  onChange={(nextValue) =>
+                    updateAgent((currentAgent) => ({
+                      ...currentAgent,
+                      reasoningDefault: nextValue,
+                    }))
+                  }
+                  placeholder='Select reasoning mode'
+                />
+              </DetailFormRow>
+
+              <DetailFormRow
+                label='Fast Mode Default'
+                description={getMetadataDescription(
+                  metadataMap,
+                  'agents.list.*.fastModeDefault'
+                )}
+              >
+                <div className='flex justify-end'>
+                  <Switch
+                    checked={readBooleanInputValue(agent.fastModeDefault, false)}
+                    onCheckedChange={(checked) =>
+                      updateAgent((currentAgent) =>
+                        setBooleanValue(currentAgent, 'fastModeDefault', checked)
+                      )
+                    }
+                  />
+                </div>
+              </DetailFormRow>
+
+              <DetailFormRow
+                label='Human Delay'
+                description={getMetadataDescription(
+                  metadataMap,
+                  'agents.list.*.humanDelay'
+                )}
+                className='xl:col-span-2'
+              >
+                <div className='grid gap-3 md:grid-cols-3'>
+                  <div className='space-y-2'>
+                    <Label className='text-xs text-muted-foreground'>Min Ms</Label>
+                    <Input
+                      type='number'
+                      value={readNumberInputValue(humanDelay.minMs)}
+                      onChange={(event) =>
+                        updateAgent((currentAgent) => ({
+                          ...currentAgent,
+                          humanDelay: setOptionalNumberValue(
+                            asObject(currentAgent.humanDelay),
+                            'minMs',
+                            event.target.value
+                          ),
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className='space-y-2'>
+                    <Label className='text-xs text-muted-foreground'>Max Ms</Label>
+                    <Input
+                      type='number'
+                      value={readNumberInputValue(humanDelay.maxMs)}
+                      onChange={(event) =>
+                        updateAgent((currentAgent) => ({
+                          ...currentAgent,
+                          humanDelay: setOptionalNumberValue(
+                            asObject(currentAgent.humanDelay),
+                            'maxMs',
+                            event.target.value
+                          ),
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className='space-y-2'>
+                    <Label className='text-xs text-muted-foreground'>Mode</Label>
+                    <SingleSelectField
+                      options={getEnumOptions(metadataMap, 'agents.list.*.humanDelay.mode')}
+                      value={readInputValue(humanDelay.mode)}
+                      onChange={(nextValue) =>
+                        updateAgent((currentAgent) => ({
+                          ...currentAgent,
+                          humanDelay: {
+                            ...asObject(currentAgent.humanDelay),
+                            mode: nextValue,
+                          },
+                        }))
+                      }
+                      placeholder='Select delay mode'
+                    />
+                  </div>
+                </div>
+              </DetailFormRow>
             </div>
-          </DetailFormRow>
-        </div>
-      </DetailFormSection>
+          </DetailFormSection>
+        </TabsContent>
+
+        <TabsContent value='skills' className='space-y-4'>
+          {selectedEnvironmentId && !agentSkillsQuery.isLoading && (
+            <SkillCatalogBrowser
+              environmentId={selectedEnvironmentId}
+              groups={agentSkillsQuery.data?.groups ?? []}
+              emptyTitle='No workspace skills found'
+              emptyDescription='No SKILL.md files were discovered in this agent workspace.'
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </DetailPageShell>
   )
 }
