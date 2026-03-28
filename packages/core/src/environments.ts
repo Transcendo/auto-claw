@@ -1,25 +1,12 @@
 import { existsSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { getSqlite, initializeDatabase } from './db'
+import { resolve } from 'node:path'
+import {
+  readAutoClawConfig,
+  writeAutoClawConfig,
+} from './app-config'
 import { CoreError } from './errors'
 import type { EnvironmentRecord } from './openclaw/types'
-
-type EnvironmentRow = {
-  id: string
-  openclaw_path: string
-  created_at: string
-  updated_at: string
-}
-
-function mapEnvironmentRow(row: EnvironmentRow): EnvironmentRecord {
-  return {
-    id: row.id,
-    openclawPath: row.openclaw_path,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }
-}
 
 function normalizeOpenClawPath(openclawPath: string) {
   return resolve(openclawPath.trim())
@@ -56,30 +43,16 @@ function assertValidEnvironmentPath(openclawPath: string) {
 }
 
 function findEnvironmentById(id: string) {
-  initializeDatabase()
-  const sqlite = getSqlite()
-  return sqlite
-    .prepare(
-      'SELECT id, openclaw_path, created_at, updated_at FROM environments WHERE id = ?'
-    )
-    .get(id) as EnvironmentRow | undefined
+  return readAutoClawConfig().environments.find(environment => environment.id === id)
 }
 
 export function listEnvironments() {
-  initializeDatabase()
-  const sqlite = getSqlite()
-  const rows = sqlite
-    .prepare(
-      'SELECT id, openclaw_path, created_at, updated_at FROM environments ORDER BY created_at ASC'
-    )
-    .all() as EnvironmentRow[]
-
-  return rows.map(mapEnvironmentRow)
+  return readAutoClawConfig().environments
 }
 
 export function getEnvironmentById(id: string) {
-  const row = findEnvironmentById(id)
-  if (!row) {
+  const environment = findEnvironmentById(id)
+  if (!environment) {
     throw new CoreError({
       statusCode: 404,
       title: 'Environment Not Found',
@@ -87,11 +60,16 @@ export function getEnvironmentById(id: string) {
     })
   }
 
-  return mapEnvironmentRow(row)
+  return environment
 }
 
 export function getFirstEnvironment() {
-  const environment = listEnvironments()[0]
+  const config = readAutoClawConfig()
+  const environment
+    = config.environments.find(
+      item => item.id === config.defaultEnvironmentId
+    ) ?? config.environments[0]
+
   if (!environment) {
     throw new CoreError({
       statusCode: 404,
@@ -105,13 +83,13 @@ export function getFirstEnvironment() {
 
 export function createEnvironment(input: { openclawPath: string }) {
   const openclawPath = assertValidEnvironmentPath(input.openclawPath)
-  const sqlite = getSqlite()
-  const existing = sqlite
-    .prepare('SELECT id FROM environments WHERE openclaw_path = ?')
-    .get(openclawPath) as { id: string } | undefined
+  const config = readAutoClawConfig()
+  const existing = config.environments.find(
+    environment => environment.openclawPath === openclawPath
+  )
 
   if (existing) {
-    return getEnvironmentById(existing.id)
+    return existing
   }
 
   const now = new Date().toISOString()
@@ -122,32 +100,37 @@ export function createEnvironment(input: { openclawPath: string }) {
     updatedAt: now,
   }
 
-  sqlite
-    .prepare(`
-      INSERT INTO environments (id, openclaw_path, created_at, updated_at)
-      VALUES (?, ?, ?, ?)
-    `)
-    .run(
-      environment.id,
-      environment.openclawPath,
-      environment.createdAt,
-      environment.updatedAt
-    )
+  const nextConfig = {
+    ...config,
+    defaultEnvironmentId: config.defaultEnvironmentId ?? environment.id,
+    environments: [...config.environments, environment],
+  }
+
+  writeAutoClawConfig(nextConfig)
 
   return environment
 }
 
 export function deleteEnvironment(id: string) {
-  const sqlite = getSqlite()
-  const result = sqlite
-    .prepare('DELETE FROM environments WHERE id = ?')
-    .run(id)
+  const config = readAutoClawConfig()
+  const nextEnvironments = config.environments.filter(environment => environment.id !== id)
 
-  if (result.changes === 0) {
+  if (nextEnvironments.length === config.environments.length) {
     throw new CoreError({
       statusCode: 404,
       title: 'Environment Not Found',
       message: `Environment ${id} was not found`,
     })
   }
+
+  const defaultEnvironmentId
+    = config.defaultEnvironmentId === id
+      ? (nextEnvironments[0]?.id ?? null)
+      : config.defaultEnvironmentId
+
+  writeAutoClawConfig({
+    ...config,
+    defaultEnvironmentId,
+    environments: nextEnvironments,
+  })
 }

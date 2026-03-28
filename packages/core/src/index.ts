@@ -22,6 +22,7 @@ export function formatBackendStatus(payload?: HelloPayload) {
 }
 
 export * from './errors'
+export * from './app-config'
 export * from './environments'
 export * from './openclaw/config'
 export * from './openclaw/metadata'

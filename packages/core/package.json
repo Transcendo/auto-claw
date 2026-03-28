@@ -7,10 +7,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./db": {
-      "types": "./dist/db.d.ts",
-      "import": "./dist/db.js"
     }
   },
   "main": "./dist/index.js",
@@ -22,18 +18,13 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "migrate:push": "tsx src/scripts/migrate-push.ts",
     "seed": "tsx src/scripts/seed.ts",
     "build": "vite build && tsc -p tsconfig.json",
     "dev": "vite build --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {
-    "better-sqlite3": "^12.8.0",
-    "drizzle-orm": "^0.45.1"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "24.12.0",
     "tsx": "^4.21.0",
     "typescript": "~5.9.3",

@@ -1,9 +1,8 @@
-import { closeDatabase, initializeDatabase } from '../db'
+import { initializeAutoClawConfig } from '../app-config'
 import { seedDefaultEnvironment } from '../openclaw/config'
 
-initializeDatabase()
+initializeAutoClawConfig()
 const seeded = await seedDefaultEnvironment()
-closeDatabase()
 
 if (seeded) {
   console.log(`[core] seeded environment: ${seeded.openclawPath}`)

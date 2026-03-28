@@ -7,6 +7,7 @@ import {
   createEnvironment,
   deleteEnvironment,
   getEnvironmentStatus,
+  initializeAutoClawConfig,
   getOpenClawAgentsSection,
   getOpenClawBackupContent,
   getOpenClawChannelsSection,
@@ -22,7 +23,6 @@ import {
   updateOpenClawGenericSection,
   updateOpenClawModelsSection,
 } from '@auto-code/core'
-import { initializeDatabase } from '@auto-code/core/db'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
@@ -262,10 +262,10 @@ else if (distDir) {
 const port = Number(process.env.PORT ?? 3000)
 
 try {
-  initializeDatabase()
+  initializeAutoClawConfig()
 }
 catch (error) {
-  console.error('[backend] failed to initialize database')
+  console.error('[backend] failed to initialize config storage')
   console.error(error instanceof Error ? error.message : error)
   process.exit(1)
 }

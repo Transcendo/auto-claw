@@ -17,14 +17,12 @@ export default defineConfig({
     rollupOptions: {
       external: [
         '@auto-code/core',
-        '@auto-code/core/db',
         ...builtinModules,
         ...builtinModules.map((module) => `node:${module}`),
       ],
       output: {
         paths: {
           '@auto-code/core': '../../core/dist/index.js',
-          '@auto-code/core/db': '../../core/dist/db.js',
         },
       },
     },
