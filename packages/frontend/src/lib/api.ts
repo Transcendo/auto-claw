@@ -6,6 +6,8 @@ import type {
   OpenClawBackupRecord,
   OpenClawChannelsSection,
   OpenClawConfigMetadata,
+  OpenClawConfigSectionKey,
+  OpenClawGenericSection,
   OpenClawModelsSection,
 } from '@/types/openclaw'
 
@@ -39,6 +41,28 @@ export async function fetchEnvironmentStatus(environmentId: string) {
 export async function fetchConfigMetadata() {
   const { data } = await api.get<OpenClawConfigMetadata>('/config/metadata')
   return data
+}
+
+export async function fetchGenericConfigSection(
+  environmentId: string,
+  section: Exclude<OpenClawConfigSectionKey, 'agents' | 'bindings'>
+) {
+  const { data } = await api.get<{ data: OpenClawGenericSection }>(
+    `/environments/${environmentId}/config/${section}`
+  )
+  return data.data
+}
+
+export async function updateGenericConfigSection(
+  environmentId: string,
+  section: Exclude<OpenClawConfigSectionKey, 'agents' | 'bindings'>,
+  payload: OpenClawGenericSection
+) {
+  const { data } = await api.put<{ data: OpenClawGenericSection }>(
+    `/environments/${environmentId}/config/${section}`,
+    { data: payload }
+  )
+  return data.data
 }
 
 export async function fetchModelsSection(environmentId: string) {

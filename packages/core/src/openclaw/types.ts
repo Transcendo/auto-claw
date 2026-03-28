@@ -37,6 +37,13 @@ export const OPENCLAW_CONFIG_SECTIONS = [
   'channels',
   'agents',
   'bindings',
+  'env',
+  'skills',
+  'plugins',
+  'gateway',
+  'hooks',
+  'mcp',
+  'cron',
 ] as const
 
 export type OpenClawConfigSectionKey =
@@ -86,6 +93,7 @@ export type OpenClawBackupRecord = {
 
 export type OpenClawModelsSection = Record<string, unknown>
 export type OpenClawChannelsSection = Record<string, unknown>
+export type OpenClawGenericSection = Record<string, unknown>
 export type OpenClawAgentsSection = {
   agents?: Record<string, unknown>
   bindings?: unknown[]

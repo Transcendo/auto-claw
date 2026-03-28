@@ -42,6 +42,7 @@ type SchemaFormEditorProps = {
   allowRemoveOptionalFields?: boolean
   compactFieldLayout?: 'stacked' | 'inline'
   compactBooleanColumns?: boolean
+  issuesByPath?: Map<string, string[]>
 }
 
 function getActiveType(
@@ -124,6 +125,7 @@ function DynamicObjectEntry({
   allowRemoveOptionalFields,
   compactFieldLayout,
   compactBooleanColumns,
+  issuesByPath,
 }: {
   entryKey: string
   path: string
@@ -141,9 +143,11 @@ function DynamicObjectEntry({
   allowRemoveOptionalFields: boolean
   compactFieldLayout: 'stacked' | 'inline'
   compactBooleanColumns: boolean
+  issuesByPath?: Map<string, string[]>
 }) {
   return (
     <SchemaDynamicObjectEntry
+      path={path}
       entryKey={entryKey}
       layout={layout}
       onRemove={onRemove}
@@ -163,6 +167,7 @@ function DynamicObjectEntry({
         allowRemoveOptionalFields={allowRemoveOptionalFields}
         compactFieldLayout={compactFieldLayout}
         compactBooleanColumns={compactBooleanColumns}
+        issuesByPath={issuesByPath}
       />
     </SchemaDynamicObjectEntry>
   )
@@ -182,6 +187,7 @@ function ObjectEditor({
   allowRemoveOptionalFields,
   compactFieldLayout,
   compactBooleanColumns,
+  issuesByPath,
 }: Required<SchemaFormEditorProps>) {
   const objectValue = isPlainObject(value) ? value : {}
   const fixedProperties = schema.properties ?? {}
@@ -250,6 +256,7 @@ function ObjectEditor({
               path={`${path}.${key}`}
               label={propertySchema.title}
               description={propertySchema.description}
+              errorMessages={issuesByPath.get(`${path}.${key}`)}
               required={requiredKeys.has(key)}
               depth={depth}
               layout={layout}
@@ -294,6 +301,7 @@ function ObjectEditor({
                 allowRemoveOptionalFields={allowRemoveOptionalFields}
                 compactFieldLayout={compactFieldLayout}
                 compactBooleanColumns={compactBooleanColumns}
+                issuesByPath={issuesByPath}
               />
             </SchemaFieldShell>
           </div>
@@ -323,6 +331,7 @@ function ObjectEditor({
             allowRemoveOptionalFields={allowRemoveOptionalFields}
             compactFieldLayout={compactFieldLayout}
             compactBooleanColumns={compactBooleanColumns}
+            issuesByPath={issuesByPath}
             onRename={(nextKey) => {
               if (!nextKey || nextKey === entryKey || nextKey in objectValue) {
                 return
@@ -419,6 +428,7 @@ function ArrayEditor({
   allowRemoveOptionalFields,
   compactFieldLayout,
   compactBooleanColumns,
+  issuesByPath,
 }: Required<SchemaFormEditorProps>) {
   const arrayValue = Array.isArray(value) ? value : []
   const itemSchema = schema.items ?? {}
@@ -461,6 +471,7 @@ function ArrayEditor({
                     allowRemoveOptionalFields={allowRemoveOptionalFields}
                     compactFieldLayout={compactFieldLayout}
                     compactBooleanColumns={compactBooleanColumns}
+                    issuesByPath={issuesByPath}
                   />
                 </div>
                 <Button
@@ -522,6 +533,7 @@ function ArrayEditor({
               allowRemoveOptionalFields={allowRemoveOptionalFields}
               compactFieldLayout={compactFieldLayout}
               compactBooleanColumns={compactBooleanColumns}
+              issuesByPath={issuesByPath}
             />
           </div>
         )
@@ -672,6 +684,7 @@ export function SchemaFormEditor({
   allowRemoveOptionalFields = true,
   compactFieldLayout = 'stacked',
   compactBooleanColumns = false,
+  issuesByPath = new Map(),
 }: SchemaFormEditorProps) {
   const resolvedSchema = useMemo(() => {
     if (schema) {
@@ -701,6 +714,7 @@ export function SchemaFormEditor({
           allowRemoveOptionalFields={allowRemoveOptionalFields}
           compactFieldLayout={compactFieldLayout}
           compactBooleanColumns={compactBooleanColumns}
+          issuesByPath={issuesByPath}
         />
       )
     }
@@ -721,6 +735,7 @@ export function SchemaFormEditor({
           allowRemoveOptionalFields={allowRemoveOptionalFields}
           compactFieldLayout={compactFieldLayout}
           compactBooleanColumns={compactBooleanColumns}
+          issuesByPath={issuesByPath}
         />
       )
     }

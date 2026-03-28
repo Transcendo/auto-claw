@@ -12,7 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedSkillsRouteImport } from './routes/_authenticated/skills'
+import { Route as AuthenticatedPluginsRouteImport } from './routes/_authenticated/plugins'
 import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
+import { Route as AuthenticatedMcpRouteImport } from './routes/_authenticated/mcp'
+import { Route as AuthenticatedHooksRouteImport } from './routes/_authenticated/hooks'
+import { Route as AuthenticatedGatewayRouteImport } from './routes/_authenticated/gateway'
+import { Route as AuthenticatedEnvRouteImport } from './routes/_authenticated/env'
+import { Route as AuthenticatedCronRouteImport } from './routes/_authenticated/cron'
 import { Route as AuthenticatedChannelsRouteImport } from './routes/_authenticated/channels'
 import { Route as AuthenticatedAgentsRouteImport } from './routes/_authenticated/agents'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
@@ -50,9 +57,44 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSkillsRoute = AuthenticatedSkillsRouteImport.update({
+  id: '/skills',
+  path: '/skills',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPluginsRoute = AuthenticatedPluginsRouteImport.update({
+  id: '/plugins',
+  path: '/plugins',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedModelsRoute = AuthenticatedModelsRouteImport.update({
   id: '/models',
   path: '/models',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMcpRoute = AuthenticatedMcpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHooksRoute = AuthenticatedHooksRouteImport.update({
+  id: '/hooks',
+  path: '/hooks',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedGatewayRoute = AuthenticatedGatewayRouteImport.update({
+  id: '/gateway',
+  path: '/gateway',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedEnvRoute = AuthenticatedEnvRouteImport.update({
+  id: '/env',
+  path: '/env',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCronRoute = AuthenticatedCronRouteImport.update({
+  id: '/cron',
+  path: '/cron',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedChannelsRoute = AuthenticatedChannelsRouteImport.update({
@@ -191,7 +233,14 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/agents': typeof AuthenticatedAgentsRouteWithChildren
   '/channels': typeof AuthenticatedChannelsRouteWithChildren
+  '/cron': typeof AuthenticatedCronRoute
+  '/env': typeof AuthenticatedEnvRoute
+  '/gateway': typeof AuthenticatedGatewayRoute
+  '/hooks': typeof AuthenticatedHooksRoute
+  '/mcp': typeof AuthenticatedMcpRoute
   '/models': typeof AuthenticatedModelsRouteWithChildren
+  '/plugins': typeof AuthenticatedPluginsRoute
+  '/skills': typeof AuthenticatedSkillsRoute
   '/agents/defaults': typeof AuthenticatedAgentsDefaultsRoute
   '/agents/': typeof AuthenticatedAgentsIndexRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
@@ -215,6 +264,13 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/cron': typeof AuthenticatedCronRoute
+  '/env': typeof AuthenticatedEnvRoute
+  '/gateway': typeof AuthenticatedGatewayRoute
+  '/hooks': typeof AuthenticatedHooksRoute
+  '/mcp': typeof AuthenticatedMcpRoute
+  '/plugins': typeof AuthenticatedPluginsRoute
+  '/skills': typeof AuthenticatedSkillsRoute
   '/': typeof AuthenticatedIndexRoute
   '/agents/defaults': typeof AuthenticatedAgentsDefaultsRoute
   '/agents': typeof AuthenticatedAgentsIndexRoute
@@ -239,7 +295,14 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/_authenticated/agents': typeof AuthenticatedAgentsRouteWithChildren
   '/_authenticated/channels': typeof AuthenticatedChannelsRouteWithChildren
+  '/_authenticated/cron': typeof AuthenticatedCronRoute
+  '/_authenticated/env': typeof AuthenticatedEnvRoute
+  '/_authenticated/gateway': typeof AuthenticatedGatewayRoute
+  '/_authenticated/hooks': typeof AuthenticatedHooksRoute
+  '/_authenticated/mcp': typeof AuthenticatedMcpRoute
   '/_authenticated/models': typeof AuthenticatedModelsRouteWithChildren
+  '/_authenticated/plugins': typeof AuthenticatedPluginsRoute
+  '/_authenticated/skills': typeof AuthenticatedSkillsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/agents/defaults': typeof AuthenticatedAgentsDefaultsRoute
   '/_authenticated/agents/': typeof AuthenticatedAgentsIndexRoute
@@ -269,7 +332,14 @@ export interface FileRouteTypes {
     | '/503'
     | '/agents'
     | '/channels'
+    | '/cron'
+    | '/env'
+    | '/gateway'
+    | '/hooks'
+    | '/mcp'
     | '/models'
+    | '/plugins'
+    | '/skills'
     | '/agents/defaults'
     | '/agents/'
     | '/channels/'
@@ -293,6 +363,13 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/cron'
+    | '/env'
+    | '/gateway'
+    | '/hooks'
+    | '/mcp'
+    | '/plugins'
+    | '/skills'
     | '/'
     | '/agents/defaults'
     | '/agents'
@@ -316,7 +393,14 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/agents'
     | '/_authenticated/channels'
+    | '/_authenticated/cron'
+    | '/_authenticated/env'
+    | '/_authenticated/gateway'
+    | '/_authenticated/hooks'
+    | '/_authenticated/mcp'
     | '/_authenticated/models'
+    | '/_authenticated/plugins'
+    | '/_authenticated/skills'
     | '/_authenticated/'
     | '/_authenticated/agents/defaults'
     | '/_authenticated/agents/'
@@ -368,11 +452,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/skills': {
+      id: '/_authenticated/skills'
+      path: '/skills'
+      fullPath: '/skills'
+      preLoaderRoute: typeof AuthenticatedSkillsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/plugins': {
+      id: '/_authenticated/plugins'
+      path: '/plugins'
+      fullPath: '/plugins'
+      preLoaderRoute: typeof AuthenticatedPluginsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/models': {
       id: '/_authenticated/models'
       path: '/models'
       fullPath: '/models'
       preLoaderRoute: typeof AuthenticatedModelsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/mcp': {
+      id: '/_authenticated/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof AuthenticatedMcpRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hooks': {
+      id: '/_authenticated/hooks'
+      path: '/hooks'
+      fullPath: '/hooks'
+      preLoaderRoute: typeof AuthenticatedHooksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/gateway': {
+      id: '/_authenticated/gateway'
+      path: '/gateway'
+      fullPath: '/gateway'
+      preLoaderRoute: typeof AuthenticatedGatewayRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/env': {
+      id: '/_authenticated/env'
+      path: '/env'
+      fullPath: '/env'
+      preLoaderRoute: typeof AuthenticatedEnvRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cron': {
+      id: '/_authenticated/cron'
+      path: '/cron'
+      fullPath: '/cron'
+      preLoaderRoute: typeof AuthenticatedCronRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/channels': {
@@ -653,14 +786,28 @@ const AuthenticatedModelsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgentsRoute: typeof AuthenticatedAgentsRouteWithChildren
   AuthenticatedChannelsRoute: typeof AuthenticatedChannelsRouteWithChildren
+  AuthenticatedCronRoute: typeof AuthenticatedCronRoute
+  AuthenticatedEnvRoute: typeof AuthenticatedEnvRoute
+  AuthenticatedGatewayRoute: typeof AuthenticatedGatewayRoute
+  AuthenticatedHooksRoute: typeof AuthenticatedHooksRoute
+  AuthenticatedMcpRoute: typeof AuthenticatedMcpRoute
   AuthenticatedModelsRoute: typeof AuthenticatedModelsRouteWithChildren
+  AuthenticatedPluginsRoute: typeof AuthenticatedPluginsRoute
+  AuthenticatedSkillsRoute: typeof AuthenticatedSkillsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAgentsRoute: AuthenticatedAgentsRouteWithChildren,
   AuthenticatedChannelsRoute: AuthenticatedChannelsRouteWithChildren,
+  AuthenticatedCronRoute: AuthenticatedCronRoute,
+  AuthenticatedEnvRoute: AuthenticatedEnvRoute,
+  AuthenticatedGatewayRoute: AuthenticatedGatewayRoute,
+  AuthenticatedHooksRoute: AuthenticatedHooksRoute,
+  AuthenticatedMcpRoute: AuthenticatedMcpRoute,
   AuthenticatedModelsRoute: AuthenticatedModelsRouteWithChildren,
+  AuthenticatedPluginsRoute: AuthenticatedPluginsRoute,
+  AuthenticatedSkillsRoute: AuthenticatedSkillsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

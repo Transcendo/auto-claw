@@ -24,6 +24,7 @@ import type {
   OpenClawBackupRecord,
   OpenClawChannelsSection,
   OpenClawConfigSectionKey,
+  OpenClawGenericSection,
   OpenClawModelsSection,
 } from './types'
 
@@ -34,6 +35,20 @@ type OpenClawSectionMap = {
   channels: OpenClawChannelsSection
   agents: OpenClawAgentsSection
 }
+
+const GENERIC_OBJECT_SECTION_KEYS = [
+  'models',
+  'channels',
+  'env',
+  'skills',
+  'plugins',
+  'gateway',
+  'hooks',
+  'mcp',
+  'cron',
+] as const
+
+type OpenClawGenericSectionKey = (typeof GENERIC_OBJECT_SECTION_KEYS)[number]
 
 function toConfigPath(openclawPath: string) {
   return resolve(openclawPath, 'openclaw.json')
@@ -290,6 +305,30 @@ export async function updateOpenClawChannelsSection(
   return channels
 }
 
+export async function getOpenClawGenericSection(
+  environmentId: string,
+  section: OpenClawGenericSectionKey
+): Promise<OpenClawGenericSection> {
+  const { document } = await readEnvironmentConfigDocument(environmentId)
+  return sanitizeUnknownObject(document[section])
+}
+
+export async function updateOpenClawGenericSection(
+  environmentId: string,
+  section: OpenClawGenericSectionKey,
+  value: OpenClawGenericSection
+) {
+  assertValidOpenClawSection(section, value)
+  const { document, environment } = await readEnvironmentConfigDocument(environmentId)
+  const nextDocument = {
+    ...document,
+    [section]: value,
+  }
+
+  await writeConfigDocumentWithBackup(environment.openclawPath, nextDocument)
+  return value
+}
+
 export async function getOpenClawAgentsSection(
   environmentId: string
 ): Promise<OpenClawAgentsSection> {
@@ -434,7 +473,18 @@ export async function seedDefaultEnvironment() {
 }
 
 export function getConfigSectionKinds(): OpenClawConfigSectionKey[] {
-  return ['models', 'channels', 'agents']
+  return [
+    'models',
+    'channels',
+    'agents',
+    'env',
+    'skills',
+    'plugins',
+    'gateway',
+    'hooks',
+    'mcp',
+    'cron',
+  ]
 }
 
 export type { OpenClawSectionMap }

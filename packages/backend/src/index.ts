@@ -11,6 +11,7 @@ import {
   getOpenClawBackupContent,
   getOpenClawChannelsSection,
   getOpenClawConfigMetadataPayload,
+  getOpenClawGenericSection,
   getOpenClawModelsSection,
   isCoreError,
   listEnvironments,
@@ -18,6 +19,7 @@ import {
   restoreOpenClawBackup,
   updateOpenClawAgentsSection,
   updateOpenClawChannelsSection,
+  updateOpenClawGenericSection,
   updateOpenClawModelsSection,
 } from '@auto-code/core'
 import { initializeDatabase } from '@auto-code/core/db'
@@ -31,6 +33,16 @@ type ApiErrorBody = {
   message?: string
   details?: unknown
 }
+
+const genericSectionKeys = [
+  'env',
+  'skills',
+  'plugins',
+  'gateway',
+  'hooks',
+  'mcp',
+  'cron',
+] as const
 
 const app = new Hono()
 
@@ -196,6 +208,24 @@ app.put('/api/environments/:id/config/agents', async (c) => {
 
   return c.json({ data })
 })
+
+for (const section of genericSectionKeys) {
+  app.get(`/api/environments/:id/config/${section}`, async (c) => {
+    const data = await getOpenClawGenericSection(c.req.param('id'), section)
+    return c.json({ data })
+  })
+
+  app.put(`/api/environments/:id/config/${section}`, async (c) => {
+    const body = jsonBody<{ data?: Record<string, unknown> }>(await c.req.json())
+    const data = await updateOpenClawGenericSection(
+      c.req.param('id'),
+      section,
+      jsonBody(body.data)
+    )
+
+    return c.json({ data })
+  })
+}
 
 app.get('/api/environments/:id/backups', async (c) => {
   const items = await listOpenClawBackups(c.req.param('id'))

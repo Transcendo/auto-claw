@@ -9,12 +9,16 @@ import { toast } from 'sonner'
 import { useEnvironmentContext } from '@/context/environment-provider'
 import { Button } from '@/components/ui/button'
 import {
+  Badge,
+} from '@/components/ui/badge'
+import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuthenticatedHeader } from '@/components/layout/authenticated-header-context'
 import { Main } from '@/components/layout/main'
@@ -36,6 +40,7 @@ type ConfigSectionPageProps<T> = {
     isSaving: boolean
     savedValue: T | null
     saveVersion: number
+    validationIssues: OpenClawValidationIssue[]
   }) => React.ReactNode
   validate?: (value: T) => OpenClawValidationIssue[]
 }
@@ -66,6 +71,10 @@ export function ConfigSectionPage<T>({
     OpenClawValidationIssue[]
   >([])
   const [saveVersion, setSaveVersion] = useState(0)
+
+  const draftValueText = useMemo(() => {
+    return draft === null ? '' : prettyJson(draft)
+  }, [draft])
 
   // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const sectionQuery = useQuery({
@@ -117,6 +126,37 @@ export function ConfigSectionPage<T>({
     return sectionQuery.data ? prettyJson(sectionQuery.data) : ''
   }, [sectionQuery.data])
 
+  const hasUnsavedChanges = draft !== null && draftValueText !== serverValueText
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges) {
+        return
+      }
+
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
+  const scrollToIssue = (path: string) => {
+    setActiveTab('builder')
+
+    queueMicrotask(() => {
+      const selector = `[data-config-path="${CSS.escape(path)}"]`
+      const element = document.querySelector<HTMLElement>(selector)
+      if (!element) {
+        return
+      }
+
+      element.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      element.focus?.()
+    })
+  }
+
   const persistValue = async (nextValue: T) => {
     const issues = validate?.(nextValue) ?? []
     if (issues.length > 0) {
@@ -165,8 +205,21 @@ export function ConfigSectionPage<T>({
   return (
     <Main className='space-y-6'>
       <div className='space-y-1'>
-        <h1 className='text-2xl font-bold tracking-tight'>{title}</h1>
-        <p className='text-sm text-muted-foreground'>{description}</p>
+        <div className='flex flex-wrap items-start justify-between gap-3'>
+          <div className='space-y-1'>
+            <h1 className='text-2xl font-bold tracking-tight'>{title}</h1>
+            <p className='text-sm text-muted-foreground'>{description}</p>
+          </div>
+          <div className='flex flex-wrap items-center gap-2'>
+            <Badge variant='outline'>
+              {saveMutation.isPending
+                ? 'Saving'
+                : hasUnsavedChanges
+                  ? 'Unsaved changes'
+                  : 'Saved'}
+            </Badge>
+          </div>
+        </div>
       </div>
 
       {validationIssues.length > 0 && (
@@ -182,12 +235,15 @@ export function ConfigSectionPage<T>({
           </CardHeader>
           <CardContent className='space-y-2 text-sm text-muted-foreground'>
             {validationIssues.slice(0, 12).map((issue) => (
-              <div key={`${issue.path}-${issue.message}`}>
-                <span className='font-medium text-foreground'>
-                  {issue.path}
-                </span>{' '}
+              <button
+                key={`${issue.path}-${issue.message}`}
+                type='button'
+                className='block text-left'
+                onClick={() => scrollToIssue(issue.path)}
+              >
+                <span className='font-medium text-foreground'>{issue.path}</span>{' '}
                 {issue.message}
-              </div>
+              </button>
             ))}
           </CardContent>
         </Card>
@@ -211,6 +267,7 @@ export function ConfigSectionPage<T>({
               isSaving: saveMutation.isPending,
               savedValue: sectionQuery.data ?? null,
               saveVersion,
+              validationIssues,
             })}
         </TabsContent>
         <TabsContent value='raw' className='space-y-4'>
@@ -233,6 +290,11 @@ export function ConfigSectionPage<T>({
               </Button>
             </CardHeader>
             <CardContent>
+              <div className='mb-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
+                <Badge variant='outline'>{hasUnsavedChanges ? 'Modified' : 'Synced'}</Badge>
+                <Separator orientation='vertical' className='hidden h-4 sm:block' />
+                <span>Use builder mode for guided editing and raw mode for direct JSON changes.</span>
+              </div>
               <MonacoJsonEditor
                 path={rawPath}
                 value={rawValue}

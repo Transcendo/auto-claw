@@ -12,6 +12,7 @@ type SchemaFieldShellProps = {
   path: string
   label?: string
   description?: string
+  errorMessages?: string[]
   required?: boolean
   depth: number
   layout: 'default' | 'compact'
@@ -25,6 +26,7 @@ export function SchemaFieldShell({
   path,
   label,
   description,
+  errorMessages,
   required,
   depth,
   layout,
@@ -34,13 +36,17 @@ export function SchemaFieldShell({
   children,
 }: SchemaFieldShellProps) {
   const resolvedLabel = formatFieldLabel(label, path)
+  const hasErrors = Boolean(errorMessages && errorMessages.length > 0)
 
   if (layout === 'compact') {
     return (
       <div
+        id={`config-path-${path}`}
+        data-config-path={path}
         className={cn(
           depth > 0 && 'border-b border-border/50 last:border-b-0',
-          depth === 0 && 'space-y-1'
+          depth === 0 && 'space-y-1',
+          hasErrors && 'rounded-lg border border-destructive/40 bg-destructive/5 px-3'
         )}
       >
         <CompactFormSection
@@ -56,6 +62,18 @@ export function SchemaFieldShell({
               {description}
             </p>
           )}
+          {hasErrors && (
+            <div className='mb-2 space-y-1'>
+              {errorMessages?.map((message) => (
+                <p
+                  key={`${path}-${message}`}
+                  className='text-xs text-destructive'
+                >
+                  {message}
+                </p>
+              ))}
+            </div>
+          )}
           {children}
         </CompactFormSection>
       </div>
@@ -64,9 +82,12 @@ export function SchemaFieldShell({
 
   return (
     <div
+      id={`config-path-${path}`}
+      data-config-path={path}
       className={cn(
         'space-y-3 rounded-xl border border-border/60 bg-card/50 p-4',
-        depth === 0 && 'border-0 bg-transparent p-0'
+        depth === 0 && 'border-0 bg-transparent p-0',
+        hasErrors && 'border-destructive/40 bg-destructive/5'
       )}
     >
       <div className='flex flex-wrap items-center justify-between gap-2'>
@@ -83,12 +104,25 @@ export function SchemaFieldShell({
         </div>
         {action}
       </div>
+      {hasErrors && (
+        <div className='space-y-1'>
+          {errorMessages?.map((message) => (
+            <p
+              key={`${path}-${message}`}
+              className='text-sm text-destructive'
+            >
+              {message}
+            </p>
+          ))}
+        </div>
+      )}
       {children}
     </div>
   )
 }
 
 type SchemaDynamicObjectEntryProps = {
+  path: string
   entryKey: string
   layout: 'default' | 'compact'
   children: ReactNode
@@ -97,6 +131,7 @@ type SchemaDynamicObjectEntryProps = {
 }
 
 export function SchemaDynamicObjectEntry({
+  path,
   entryKey,
   layout,
   children,
@@ -121,6 +156,8 @@ export function SchemaDynamicObjectEntry({
 
   return (
     <div
+      id={`config-path-${path}`}
+      data-config-path={path}
       className={cn(
         'space-y-3 rounded-xl border border-border/60 bg-background/70 p-4',
         layout === 'compact' && 'rounded-none border-0 bg-transparent p-0'
