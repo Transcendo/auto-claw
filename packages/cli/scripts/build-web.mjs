@@ -59,8 +59,8 @@ async function main() {
   })
 
   await rm(coreDist, { recursive: true, force: true })
-  await mkdir(coreDist, { recursive: true })
-  await cp(resolve(coreDir, 'dist'), coreDist, {
+  await mkdir(resolve(coreDist, 'dist'), { recursive: true })
+  await cp(resolve(coreDir, 'dist'), resolve(coreDist, 'dist'), {
     recursive: true,
   })
 

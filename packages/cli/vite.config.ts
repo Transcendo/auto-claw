@@ -29,7 +29,7 @@ export default defineConfig({
       output: {
         banner: '#!/usr/bin/env node',
         paths: {
-          '@auto-code/core': './core/index.js'
+          '@auto-code/core': './core/dist/index.js'
         }
       }
     },
