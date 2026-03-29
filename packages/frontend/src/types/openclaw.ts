@@ -70,6 +70,8 @@ export type EnvironmentRecord = {
   id: string
   openclawPath: string
   port: number
+  launchMode: OpenClawLaunchMode
+  runtimeProcess: ManagedRuntimeProcess | null
   createdAt: string
   updatedAt: string
 }
@@ -92,8 +94,6 @@ export type ManagedRuntimeProcess = {
 export type GlobalSettings = {
   runMode: OpenClawRunMode
   sourcePath: string | null
-  launchMode: OpenClawLaunchMode
-  runtimeProcess: ManagedRuntimeProcess | null
 }
 
 export type AutoClawSettingsPayload = {
@@ -185,6 +185,11 @@ export type OpenClawServiceStatus = {
   environmentId: string
   command: string[]
   cwd: string | null
+  environmentVariables: {
+    OPENCLAW_STATE_DIR: string
+    OPENCLAW_CONFIG_PATH: string
+    OPENCLAW_GATEWAY_PORT: string
+  }
   installed: boolean
   running: boolean
   pid?: number

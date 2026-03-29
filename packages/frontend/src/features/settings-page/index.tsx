@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  CheckCircle2,
   Folder,
   Hammer,
   Pencil,
@@ -25,7 +24,9 @@ import {
   fetchSettings,
   restoreBackup,
   runOpenClawServiceAction,
+  setupEnvironmentRequest,
   updateEnvironmentRequest,
+  updateEnvironmentSettingsRequest,
   updateGlobalSettingsRequest,
 } from '@/lib/api'
 import { useEnvironmentContext } from '@/context/environment-provider'
@@ -34,7 +35,6 @@ import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -83,10 +83,6 @@ function getEnvironmentLabels(openclawPath: string) {
     name: parts[parts.length - 1] ?? normalized,
     parent: parts[parts.length - 2] ?? 'Environment',
   }
-}
-
-function formatCommand(command: string[]) {
-  return command.join(' ')
 }
 
 function getServiceActionLabel(
@@ -216,39 +212,24 @@ export function SettingsPage() {
   const [versionOutput, setVersionOutput] = useState<string>('')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const activeEnvironmentId = selectedEnvironment?.id ?? null
 
   const settingsQuery = useQuery({
     queryKey: ['settings'],
     queryFn: fetchSettings,
   })
 
-  const serviceStatusQuery = useQuery({
-    queryKey: ['service-status', selectedEnvironmentId, settingsQuery.data?.global.launchMode],
-    queryFn: () => fetchOpenClawServiceStatus(selectedEnvironmentId as string),
-    enabled:
-      Boolean(selectedEnvironmentId)
-      && settingsQuery.isSuccess
-      && (
-        settingsQuery.data.global.runMode === 'global'
-        || Boolean(settingsQuery.data.global.sourcePath)
-      ),
-    refetchInterval: query =>
-      query.state.data?.launchMode === 'runtime' && query.state.data?.running
-        ? 3000
-        : false,
-  })
-
   const backupsQuery = useQuery({
-    queryKey: ['backups', selectedEnvironmentId],
-    queryFn: () => fetchBackups(selectedEnvironmentId as string),
-    enabled: Boolean(selectedEnvironmentId),
+    queryKey: ['backups', activeEnvironmentId],
+    queryFn: () => fetchBackups(activeEnvironmentId as string),
+    enabled: Boolean(activeEnvironmentId),
   })
 
   const backupPreviewQuery = useQuery({
-    queryKey: ['backup-preview', selectedEnvironmentId, previewVersion],
+    queryKey: ['backup-preview', activeEnvironmentId, previewVersion],
     queryFn: () =>
-      fetchBackupContent(selectedEnvironmentId as string, previewVersion as number),
-    enabled: Boolean(selectedEnvironmentId) && previewVersion !== null,
+      fetchBackupContent(activeEnvironmentId as string, previewVersion as number),
+    enabled: Boolean(activeEnvironmentId) && previewVersion !== null,
   })
 
   useEffect(() => {
@@ -256,11 +237,13 @@ export function SettingsPage() {
       return
     }
 
-    const global = settingsQuery.data.global
-    setRunMode(global.runMode)
-    setLaunchMode(global.launchMode)
-    setSourcePath(global.sourcePath ?? '')
+    setRunMode(settingsQuery.data.global.runMode)
+    setSourcePath(settingsQuery.data.global.sourcePath ?? '')
   }, [settingsQuery.data])
+
+  useEffect(() => {
+    setLaunchMode(selectedEnvironment?.launchMode ?? 'daemon')
+  }, [selectedEnvironment?.id, selectedEnvironment?.launchMode])
 
   useEffect(() => {
     if (!backupsQuery.data?.length) {
@@ -271,31 +254,68 @@ export function SettingsPage() {
     setRestoreVersion(current => current || String(backupsQuery.data[0]?.version ?? ''))
   }, [backupsQuery.data])
 
+  const sourcePathRequired = runMode === 'source'
+  const sourcePathValue = sourcePath.trim()
+  const sourcePathReady = !sourcePathRequired || sourcePathValue.length > 0
   const selectedEnvironmentLabels = selectedEnvironment
     ? getEnvironmentLabels(selectedEnvironment.openclawPath)
     : null
 
-  const draftChanged
+  const globalDraftChanged
     = settingsQuery.data !== undefined
       && (
         runMode !== settingsQuery.data.global.runMode
-        || launchMode !== settingsQuery.data.global.launchMode
-        || sourcePath.trim() !== (settingsQuery.data.global.sourcePath ?? '')
+        || sourcePathValue !== (settingsQuery.data.global.sourcePath ?? '')
       )
 
-  const sourcePathRequired = runMode === 'source'
-  const sourcePathReady = !sourcePathRequired || sourcePath.trim().length > 0
-  const commandReady = Boolean(selectedEnvironmentId) && sourcePathReady
+  const environmentDraftChanged
+    = selectedEnvironment !== null && launchMode !== selectedEnvironment.launchMode
+  const hasPendingCommandDraft = globalDraftChanged || environmentDraftChanged
+  const commandReady
+    = Boolean(selectedEnvironment)
+      && sourcePathReady
+      && !hasPendingCommandDraft
+
+  const serviceStatusQuery = useQuery({
+    queryKey: [
+      'service-status',
+      activeEnvironmentId,
+      selectedEnvironment?.launchMode,
+      settingsQuery.data?.global.runMode,
+      settingsQuery.data?.global.sourcePath,
+    ],
+    queryFn: () => fetchOpenClawServiceStatus(activeEnvironmentId as string),
+    enabled: Boolean(activeEnvironmentId) && settingsQuery.isSuccess && sourcePathReady,
+    refetchInterval: query =>
+      query.state.data?.launchMode === 'runtime' && query.state.data?.running
+        ? 3000
+        : false,
+  })
 
   const saveGlobalSettingsMutation = useMutation({
     mutationFn: (payload: {
       runMode: GlobalSettings['runMode']
       sourcePath: string | null
-      launchMode: GlobalSettings['launchMode']
     }) => updateGlobalSettingsRequest(payload),
     onSuccess: async () => {
       toast.success('Global settings saved')
       await queryClient.invalidateQueries({ queryKey: ['settings'] })
+      await queryClient.invalidateQueries({ queryKey: ['service-status'] })
+    },
+  })
+
+  const saveEnvironmentSettingsMutation = useMutation({
+    mutationFn: ({
+      environmentId,
+      launchMode,
+    }: {
+      environmentId: string
+      launchMode: OpenClawLaunchMode
+    }) => updateEnvironmentSettingsRequest(environmentId, { launchMode }),
+    onSuccess: async (environment) => {
+      toast.success('Environment configuration saved')
+      setLaunchMode(environment.launchMode)
+      await queryClient.invalidateQueries({ queryKey: ['environments'] })
       await queryClient.invalidateQueries({ queryKey: ['service-status'] })
     },
   })
@@ -310,7 +330,6 @@ export function SettingsPage() {
       await queryClient.invalidateQueries({
         queryKey: ['environment-status', environment.id],
       })
-      await queryClient.invalidateQueries({ queryKey: ['service-status'] })
     },
   })
 
@@ -357,24 +376,14 @@ export function SettingsPage() {
 
   const restoreBackupMutation = useMutation({
     mutationFn: async (version: number) =>
-      restoreBackup(selectedEnvironmentId as string, version),
+      restoreBackup(activeEnvironmentId as string, version),
     onSuccess: async () => {
       toast.success('Backup restored')
       await queryClient.invalidateQueries({
-        queryKey: ['environment-status', selectedEnvironmentId],
+        queryKey: ['environment-status', activeEnvironmentId],
       })
       await queryClient.invalidateQueries({
-        queryKey: ['backups', selectedEnvironmentId],
-      })
-      await queryClient.invalidateQueries({ queryKey: ['service-status'] })
-      await queryClient.invalidateQueries({
-        queryKey: ['config-models', selectedEnvironmentId],
-      })
-      await queryClient.invalidateQueries({
-        queryKey: ['config-channels', selectedEnvironmentId],
-      })
-      await queryClient.invalidateQueries({
-        queryKey: ['config-agents', selectedEnvironmentId],
+        queryKey: ['backups', activeEnvironmentId],
       })
     },
   })
@@ -397,6 +406,31 @@ export function SettingsPage() {
     },
   })
 
+  const setupEnvironmentMutation = useMutation({
+    mutationFn: (environmentId: string) => setupEnvironmentRequest(environmentId),
+    onSuccess: async (result: {
+      ok: boolean
+      stdout: string
+      stderr: string
+      error?: string
+    }) => {
+      if (result.ok) {
+        toast.success('Setup complete')
+      }
+      else {
+        toast.error((result.error ?? result.stderr.trim()) || 'Setup failed')
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: ['environment-status', selectedEnvironment?.id ?? null],
+      })
+      await queryClient.invalidateQueries({ queryKey: ['service-status'] })
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Setup failed')
+    },
+  })
+
   const serviceActionMutation = useMutation({
     mutationFn: ({
       action,
@@ -414,6 +448,7 @@ export function SettingsPage() {
       }
 
       await queryClient.invalidateQueries({ queryKey: ['service-status'] })
+      await queryClient.invalidateQueries({ queryKey: ['environments'] })
     },
   })
 
@@ -431,24 +466,17 @@ export function SettingsPage() {
     [backupsQuery.data, restoreVersion]
   )
 
-  const runtimeOtherEnvironment = serviceStatusQuery.data?.activeEnvironmentId
-    ? environments.find(
-        environment => environment.id === serviceStatusQuery.data?.activeEnvironmentId
-      )
-    : null
+  const effectiveStatus = serviceStatusQuery.data
+  const showSaveEnvironment = Boolean(selectedEnvironment)
 
   return (
     <div className='container max-w-none px-6 py-8'>
       <main className='mx-auto flex max-w-7xl flex-col gap-6'>
         <div className='space-y-2'>
           <h1 className='text-3xl font-semibold tracking-tight'>Settings</h1>
-          <p className='max-w-3xl text-sm leading-6 text-muted-foreground'>
-            Manage the OpenClaw execution mode, service control, and environment-specific
-            config targets from one place.
-          </p>
         </div>
 
-        <div className='grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.95fr)]'>
+        <div className='grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.9fr)]'>
           <div className='order-last space-y-6 xl:order-none'>
             <Card className='border-border/60'>
               <CardHeader>
@@ -456,47 +484,24 @@ export function SettingsPage() {
                   <div className='flex size-11 items-center justify-center rounded-2xl bg-muted text-muted-foreground'>
                     <Settings2 className='size-5' />
                   </div>
-                  <div>
-                    <CardTitle>Global Configuration</CardTitle>
-                    <CardDescription>
-                      Choose how Auto Claw runs OpenClaw commands globally.
-                    </CardDescription>
-                  </div>
+                  <CardTitle>Global Configuration</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className='space-y-5'>
-                <div className='grid gap-4 md:grid-cols-2'>
-                  <div className='space-y-2'>
-                    <div className='text-sm font-medium'>Run environment</div>
-                    <Select
-                      value={runMode}
-                      onValueChange={value => setRunMode(value as OpenClawRunMode)}
-                    >
-                      <SelectTrigger className='w-full'>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value='global'>Global install</SelectItem>
-                        <SelectItem value='source'>Source run</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className='space-y-2'>
-                    <div className='text-sm font-medium'>Launch mode</div>
-                    <Select
-                      value={launchMode}
-                      onValueChange={value => setLaunchMode(value as OpenClawLaunchMode)}
-                    >
-                      <SelectTrigger className='w-full'>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value='daemon'>Daemon</SelectItem>
-                        <SelectItem value='runtime'>Runtime</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className='space-y-2'>
+                  <div className='text-sm font-medium'>Run environment</div>
+                  <Select
+                    value={runMode}
+                    onValueChange={value => setRunMode(value as OpenClawRunMode)}
+                  >
+                    <SelectTrigger className='w-full'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='global'>Global install</SelectItem>
+                      <SelectItem value='source'>Source run</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {runMode === 'source' && (
@@ -507,13 +512,6 @@ export function SettingsPage() {
                       onChange={event => setSourcePath(event.target.value)}
                       placeholder='/Users/javis/code/openclaw'
                     />
-                    <p className='text-xs text-muted-foreground'>
-                      Source mode runs commands as
-                      {' '}
-                      <code>pnpm openclaw ...</code>
-                      {' '}
-                      inside this directory.
-                    </p>
                   </div>
                 )}
 
@@ -522,39 +520,16 @@ export function SettingsPage() {
                     onClick={() =>
                       saveGlobalSettingsMutation.mutate({
                         runMode,
-                        sourcePath: runMode === 'source' ? sourcePath.trim() || null : null,
-                        launchMode,
+                        sourcePath: runMode === 'source' ? sourcePathValue || null : null,
                       })}
                     disabled={
-                      !draftChanged
+                      !globalDraftChanged
                       || !sourcePathReady
                       || saveGlobalSettingsMutation.isPending
                     }
                   >
                     {saveGlobalSettingsMutation.isPending ? 'Saving...' : 'Save'}
                   </Button>
-
-                  <Button
-                    variant='outline'
-                    className='gap-2'
-                    disabled={!commandReady || checkVersionMutation.isPending}
-                    onClick={() =>
-                      checkVersionMutation.mutate(selectedEnvironmentId as string)}
-                  >
-                    <Terminal className='size-4' />
-                    {checkVersionMutation.isPending ? 'Checking...' : 'Check'}
-                  </Button>
-                </div>
-
-                <div className='rounded-2xl border border-border/60 bg-muted/20 p-4'>
-                  <div className='mb-2 flex items-center gap-2 text-sm font-medium'>
-                    <CheckCircle2 className='size-4 text-muted-foreground' />
-                    Version output
-                  </div>
-                  <pre className='overflow-x-auto whitespace-pre-wrap break-words text-xs text-muted-foreground'>
-                    {versionOutput
-                      || 'Run the version check to display the resolved OpenClaw version.'}
-                  </pre>
                 </div>
               </CardContent>
             </Card>
@@ -569,164 +544,292 @@ export function SettingsPage() {
                       <Terminal className='size-5' />
                     )}
                   </div>
-                  <div>
-                    <CardTitle>
-                      {launchMode === 'daemon' ? 'Daemon Control' : 'Runtime Control'}
-                    </CardTitle>
-                    <CardDescription>
-                      {launchMode === 'daemon'
-                        ? 'Install and control the OpenClaw gateway service.'
-                        : 'Start and stop a managed foreground gateway process in the background.'}
-                    </CardDescription>
-                  </div>
+                  <CardTitle>Environment Configuration</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className='space-y-4'>
+              <CardContent className='space-y-5'>
                 {!selectedEnvironment && (
                   <div className='rounded-xl border border-dashed border-border/70 bg-muted/20 p-6 text-sm text-muted-foreground'>
-                    Select an environment before checking service status.
+                    No environment selected.
                   </div>
                 )}
 
                 {selectedEnvironment && (
                   <>
-                    <div className='flex flex-wrap items-center gap-2'>
-                      <Badge variant={serviceStatusQuery.data?.running ? 'default' : 'secondary'}>
-                        {serviceStatusQuery.data?.running ? 'Running' : 'Stopped'}
-                      </Badge>
-                      {launchMode === 'daemon' && (
-                        <Badge
-                          variant={
-                            serviceStatusQuery.data?.installed ? 'default' : 'secondary'
-                          }
+                    <div className='grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]'>
+                      <div className='space-y-2'>
+                        <div className='text-sm font-medium'>Launch mode</div>
+                        <Select
+                          value={launchMode}
+                          onValueChange={value => setLaunchMode(value as OpenClawLaunchMode)}
                         >
-                          {serviceStatusQuery.data?.installed ? 'Installed' : 'Not installed'}
-                        </Badge>
-                      )}
-                      <Badge variant='outline'>Port {selectedEnvironment.port}</Badge>
-                    </div>
+                          <SelectTrigger className='w-full'>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value='daemon'>Daemon</SelectItem>
+                            <SelectItem value='runtime'>Runtime</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className='space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-4 text-sm'>
-                      <div className='font-medium'>Resolved command</div>
-                      <code className='block break-all text-xs text-muted-foreground'>
-                        {serviceStatusQuery.data
-                          ? formatCommand(serviceStatusQuery.data.command)
-                          : launchMode === 'runtime'
-                            ? 'openclaw gateway run'
-                            : 'openclaw gateway status --json'}
-                      </code>
-                      {serviceStatusQuery.data?.cwd && (
-                        <div className='text-xs text-muted-foreground'>
-                          cwd:
-                          {' '}
-                          {serviceStatusQuery.data.cwd}
-                        </div>
-                      )}
-                      {serviceStatusQuery.data?.pid && (
-                        <div className='text-xs text-muted-foreground'>
-                          pid:
-                          {' '}
-                          {serviceStatusQuery.data.pid}
-                        </div>
-                      )}
-                      {serviceStatusQuery.data?.startedAt && (
-                        <div className='text-xs text-muted-foreground'>
-                          started:
-                          {' '}
-                          {format(
-                            new Date(serviceStatusQuery.data.startedAt),
-                            'yyyy-MM-dd HH:mm:ss'
-                          )}
-                        </div>
-                      )}
-                      {runtimeOtherEnvironment && (
-                        <div className='text-xs text-amber-700 dark:text-amber-400'>
-                          Another managed runtime is active for
-                          {' '}
-                          {getEnvironmentLabels(runtimeOtherEnvironment.openclawPath).name}
-                          .
-                        </div>
-                      )}
-                      {serviceStatusQuery.data?.error && (
-                        <div className='text-xs text-destructive'>
-                          {serviceStatusQuery.data.error}
+                      {showSaveEnvironment && (
+                        <div className='flex items-end gap-3'>
+                          <Button
+                            disabled={
+                              !environmentDraftChanged
+                              || saveEnvironmentSettingsMutation.isPending
+                            }
+                            onClick={() =>
+                              saveEnvironmentSettingsMutation.mutate({
+                                environmentId: selectedEnvironment.id,
+                                launchMode,
+                              })}
+                          >
+                            {saveEnvironmentSettingsMutation.isPending
+                              ? 'Saving...'
+                              : 'Save'}
+                          </Button>
                         </div>
                       )}
                     </div>
 
                     <div className='flex flex-wrap gap-3'>
-                      {launchMode === 'daemon' && (
+                      {!environmentStatus?.configExists && (
                         <Button
                           variant='outline'
                           className='gap-2'
-                          disabled={!commandReady || serviceActionMutation.isPending}
+                          disabled={!commandReady || setupEnvironmentMutation.isPending}
                           onClick={() =>
-                            serviceActionMutation.mutate({
-                              action: 'install',
-                              environmentId: selectedEnvironment.id,
-                            })}
+                            setupEnvironmentMutation.mutate(selectedEnvironment.id)}
                         >
                           <Hammer className='size-4' />
-                          {serviceActionMutation.isPending
-                            ? 'Working...'
-                            : getServiceActionLabel(launchMode, 'install')}
+                          {setupEnvironmentMutation.isPending ? 'Setting up...' : 'Setup'}
                         </Button>
                       )}
 
                       <Button
-                        className='gap-2'
-                        disabled={!commandReady || serviceActionMutation.isPending}
-                        onClick={() =>
-                          serviceActionMutation.mutate({
-                            action: 'start',
-                            environmentId: selectedEnvironment.id,
-                          })}
-                      >
-                        <Play className='size-4' />
-                        {serviceActionMutation.isPending
-                          ? 'Working...'
-                          : getServiceActionLabel(launchMode, 'start')}
-                      </Button>
-
-                      <Button
                         variant='outline'
                         className='gap-2'
-                        disabled={!commandReady || serviceActionMutation.isPending}
+                        disabled={!commandReady || checkVersionMutation.isPending}
                         onClick={() =>
-                          serviceActionMutation.mutate({
-                            action: 'restart',
-                            environmentId: selectedEnvironment.id,
-                          })}
+                          checkVersionMutation.mutate(selectedEnvironment.id)}
                       >
-                        <RefreshCw className='size-4' />
-                        {serviceActionMutation.isPending
-                          ? 'Working...'
-                          : getServiceActionLabel(launchMode, 'restart')}
-                      </Button>
-
-                      <Button
-                        variant='outline'
-                        className='gap-2'
-                        disabled={!commandReady || serviceActionMutation.isPending}
-                        onClick={() =>
-                          serviceActionMutation.mutate({
-                            action: 'stop',
-                            environmentId: selectedEnvironment.id,
-                          })}
-                      >
-                        <Square className='size-4' />
-                        {serviceActionMutation.isPending
-                          ? 'Working...'
-                          : getServiceActionLabel(launchMode, 'stop')}
+                        <Terminal className='size-4' />
+                        {checkVersionMutation.isPending ? 'Checking...' : 'Check'}
                       </Button>
                     </div>
 
-                    {(serviceStatusQuery.data?.stdout || serviceStatusQuery.data?.stderr) && (
-                      <div className='rounded-2xl border border-border/60 bg-background/80 p-4'>
-                        <div className='mb-2 text-sm font-medium'>Latest output</div>
-                        <pre className='max-h-56 overflow-auto whitespace-pre-wrap break-words text-xs text-muted-foreground'>
-                          {serviceStatusQuery.data.stdout || serviceStatusQuery.data.stderr}
+                    {hasPendingCommandDraft && (
+                      <div className='rounded-xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground'>
+                        Save changes first.
+                      </div>
+                    )}
+
+                    {versionOutput && (
+                      <div className='rounded-xl border border-border/60 bg-muted/20 px-4 py-3'>
+                        <pre className='overflow-x-auto whitespace-pre-wrap break-words text-xs text-muted-foreground'>
+                          {versionOutput}
                         </pre>
+                      </div>
+                    )}
+
+                    {launchMode === 'daemon' ? (
+                      <div className='space-y-4'>
+                        <div className='text-sm font-medium'>Daemon</div>
+
+                        <div className='flex flex-wrap items-center gap-2'>
+                          <Badge variant={effectiveStatus?.running ? 'default' : 'secondary'}>
+                            {effectiveStatus?.running ? 'Running' : 'Stopped'}
+                          </Badge>
+                          <Badge
+                            variant={effectiveStatus?.installed ? 'default' : 'secondary'}
+                          >
+                            {effectiveStatus?.installed ? 'Installed' : 'Not installed'}
+                          </Badge>
+                          <Badge variant='outline'>Port {selectedEnvironment.port}</Badge>
+                        </div>
+
+                        {effectiveStatus?.error && (
+                          <div className='text-xs text-destructive'>
+                            {effectiveStatus.error}
+                          </div>
+                        )}
+
+                        <div className='flex flex-wrap gap-3'>
+                          <Button
+                            variant='outline'
+                            className='gap-2'
+                            disabled={
+                              !commandReady
+                              || environmentDraftChanged
+                              || serviceActionMutation.isPending
+                            }
+                            onClick={() =>
+                              serviceActionMutation.mutate({
+                                action: 'install',
+                                environmentId: selectedEnvironment.id,
+                              })}
+                          >
+                            <Hammer className='size-4' />
+                            {serviceActionMutation.isPending
+                              ? 'Working...'
+                              : getServiceActionLabel(launchMode, 'install')}
+                          </Button>
+
+                          <Button
+                            className='gap-2'
+                            disabled={
+                              !commandReady
+                              || environmentDraftChanged
+                              || serviceActionMutation.isPending
+                            }
+                            onClick={() =>
+                              serviceActionMutation.mutate({
+                                action: 'start',
+                                environmentId: selectedEnvironment.id,
+                              })}
+                          >
+                            <Play className='size-4' />
+                            {serviceActionMutation.isPending
+                              ? 'Working...'
+                              : getServiceActionLabel(launchMode, 'start')}
+                          </Button>
+
+                          <Button
+                            variant='outline'
+                            className='gap-2'
+                            disabled={
+                              !commandReady
+                              || environmentDraftChanged
+                              || serviceActionMutation.isPending
+                            }
+                            onClick={() =>
+                              serviceActionMutation.mutate({
+                                action: 'restart',
+                                environmentId: selectedEnvironment.id,
+                              })}
+                          >
+                            <RefreshCw className='size-4' />
+                            {serviceActionMutation.isPending
+                              ? 'Working...'
+                              : getServiceActionLabel(launchMode, 'restart')}
+                          </Button>
+
+                          <Button
+                            variant='outline'
+                            className='gap-2'
+                            disabled={
+                              !commandReady
+                              || environmentDraftChanged
+                              || serviceActionMutation.isPending
+                            }
+                            onClick={() =>
+                              serviceActionMutation.mutate({
+                                action: 'stop',
+                                environmentId: selectedEnvironment.id,
+                              })}
+                          >
+                            <Square className='size-4' />
+                            {serviceActionMutation.isPending
+                              ? 'Working...'
+                              : getServiceActionLabel(launchMode, 'stop')}
+                          </Button>
+                        </div>
+
+                        {(effectiveStatus?.stdout || effectiveStatus?.stderr) && (
+                          <div className='rounded-xl border border-border/60 bg-muted/20 p-4'>
+                            <div className='mb-2 text-xs font-medium'>Latest output</div>
+                            <pre className='max-h-56 overflow-auto whitespace-pre-wrap break-words text-xs text-muted-foreground'>
+                              {effectiveStatus.stdout || effectiveStatus.stderr}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className='space-y-4'>
+                        <div className='text-sm font-medium'>Runtime</div>
+
+                        <div className='flex flex-wrap items-center gap-2'>
+                          <Badge variant={effectiveStatus?.running ? 'default' : 'secondary'}>
+                            {effectiveStatus?.running ? 'Healthy' : 'Stopped'}
+                          </Badge>
+                          <Badge variant='outline'>Port {selectedEnvironment.port}</Badge>
+                        </div>
+
+                        <div className='grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-muted-foreground'>
+                          <span>pid</span>
+                          <span>{effectiveStatus?.pid ?? 'Not running'}</span>
+                          <span>started</span>
+                          <span>
+                            {effectiveStatus?.startedAt
+                              ? format(
+                                  new Date(effectiveStatus.startedAt),
+                                  'yyyy-MM-dd HH:mm:ss'
+                                )
+                              : 'Not running'}
+                          </span>
+                          <span>log</span>
+                          <span className='break-all'>
+                            {effectiveStatus?.logPath ?? 'No runtime log yet'}
+                          </span>
+                        </div>
+
+                        {effectiveStatus?.error && (
+                          <div className='text-xs text-destructive'>
+                            {effectiveStatus.error}
+                          </div>
+                        )}
+
+                        <div className='flex flex-wrap gap-3'>
+                          <Button
+                            className='gap-2'
+                            disabled={
+                              !commandReady
+                              || environmentDraftChanged
+                              || serviceActionMutation.isPending
+                            }
+                            onClick={() =>
+                              serviceActionMutation.mutate({
+                                action: 'start',
+                                environmentId: selectedEnvironment.id,
+                              })}
+                          >
+                            <Play className='size-4' />
+                            {serviceActionMutation.isPending
+                              ? 'Working...'
+                              : getServiceActionLabel(launchMode, 'start')}
+                          </Button>
+
+                          <Button
+                            variant='outline'
+                            className='gap-2'
+                            disabled={
+                              !commandReady
+                              || environmentDraftChanged
+                              || serviceActionMutation.isPending
+                            }
+                            onClick={() =>
+                              serviceActionMutation.mutate({
+                                action: 'stop',
+                                environmentId: selectedEnvironment.id,
+                              })}
+                          >
+                            <Square className='size-4' />
+                            {serviceActionMutation.isPending
+                              ? 'Working...'
+                              : getServiceActionLabel(launchMode, 'stop')}
+                          </Button>
+                        </div>
+
+                        {(effectiveStatus?.stdout || effectiveStatus?.stderr) && (
+                          <div className='rounded-xl border border-border/60 bg-muted/20 p-4'>
+                            <div className='mb-2 text-xs font-medium'>Latest output</div>
+                            <pre className='max-h-56 overflow-auto whitespace-pre-wrap break-words text-xs text-muted-foreground'>
+                              {effectiveStatus.stdout || effectiveStatus.stderr}
+                            </pre>
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
@@ -739,16 +842,10 @@ export function SettingsPage() {
             <Card className='border-border/60'>
               <CardHeader>
                 <div className='flex items-center gap-3'>
-                  <div className='flex size-11 items-center justify-center rounded-2xl bg-muted text-muted-foreground'>
+                  <div className='flex size-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-muted-foreground'>
                     <Folder className='size-5' />
                   </div>
-                  <div>
-                    <CardTitle>Environment Configuration</CardTitle>
-                    <CardDescription>
-                      Select the active config directory, edit its path and port, and recover
-                      prior versions.
-                    </CardDescription>
-                  </div>
+                  <CardTitle>Environment</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className='space-y-5'>
@@ -760,9 +857,7 @@ export function SettingsPage() {
 
                 {!isLoadingEnvironments && environments.length === 0 && (
                   <div className='rounded-2xl border border-dashed border-border/70 bg-muted/20 p-8'>
-                    <div className='text-sm text-muted-foreground'>
-                      No environments configured yet. Create one to begin.
-                    </div>
+                    <div className='text-sm text-muted-foreground'>No environments.</div>
                     <div className='mt-4'>
                       <Button onClick={() => setIsCreateDialogOpen(true)}>Create</Button>
                     </div>
@@ -853,7 +948,7 @@ export function SettingsPage() {
                     <div className='rounded-2xl border border-border/60 bg-muted/20 p-5'>
                       {!selectedEnvironment && (
                         <div className='text-sm text-muted-foreground'>
-                          Select an environment to inspect its details.
+                          No environment selected.
                         </div>
                       )}
 
@@ -865,6 +960,11 @@ export function SettingsPage() {
                                 {selectedEnvironmentLabels?.name}
                               </div>
                               <Badge variant='outline'>Port {selectedEnvironment.port}</Badge>
+                              <Badge variant='outline'>
+                                {selectedEnvironment.launchMode === 'runtime'
+                                  ? 'Runtime'
+                                  : 'Daemon'}
+                              </Badge>
                               <Badge
                                 variant={
                                   environmentStatus?.canLoadConfig ? 'default' : 'secondary'
@@ -896,13 +996,13 @@ export function SettingsPage() {
                     <div className='space-y-3'>
                       <div className='text-sm font-medium'>Restore backup</div>
 
-                      {selectedEnvironmentId && backupsQuery.data?.length === 0 && (
+                      {activeEnvironmentId && backupsQuery.data?.length === 0 && (
                         <div className='rounded-xl border border-dashed border-border/70 bg-muted/20 p-6 text-sm text-muted-foreground'>
                           No backups created yet.
                         </div>
                       )}
 
-                      {selectedEnvironmentId && (backupsQuery.data?.length ?? 0) > 0 && (
+                      {activeEnvironmentId && (backupsQuery.data?.length ?? 0) > 0 && (
                         <>
                           <div className='grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]'>
                             <Select
@@ -985,26 +1085,17 @@ export function SettingsPage() {
                           </div>
 
                           {selectedBackup && (
-                            <div className='rounded-xl border border-border/60 bg-background/80 p-4 text-sm text-muted-foreground'>
+                            <div className='rounded-xl border border-border/60 bg-muted/20 p-4 text-xs text-muted-foreground'>
+                              <div>File: {selectedBackup.filename}</div>
                               <div>
-                                Version
-                                {' '}
-                                {selectedBackup.version}
-                                {' '}
-                                ·
+                                Created:
                                 {' '}
                                 {format(
                                   new Date(selectedBackup.createdAt),
                                   'yyyy-MM-dd HH:mm:ss'
                                 )}
                               </div>
-                              <div className='text-xs'>
-                                {selectedBackup.filename}
-                                {' '}
-                                ·
-                                {' '}
-                                {formatBytes(selectedBackup.size)}
-                              </div>
+                              <div>Size: {formatBytes(selectedBackup.size)}</div>
                             </div>
                           )}
                         </>
@@ -1022,8 +1113,8 @@ export function SettingsPage() {
         mode='create'
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
-        onSubmit={payload => createEnvironmentMutation.mutate(payload)}
         isPending={createEnvironmentMutation.isPending}
+        onSubmit={payload => createEnvironmentMutation.mutate(payload)}
       />
 
       <EnvironmentDialog
@@ -1031,44 +1122,44 @@ export function SettingsPage() {
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         initialEnvironment={selectedEnvironment}
+        isPending={updateEnvironmentMutation.isPending}
         onSubmit={payload =>
           selectedEnvironment
             && updateEnvironmentMutation.mutate({
               environmentId: selectedEnvironment.id,
               payload,
             })}
-        isPending={updateEnvironmentMutation.isPending}
       />
 
       <Dialog
         open={previewVersion !== null}
-        onOpenChange={(open) => {
+        onOpenChange={open => {
           if (!open) {
             setPreviewVersion(null)
           }
         }}
       >
-        <DialogContent className='max-w-5xl'>
+        <DialogContent className='max-h-[85vh] max-w-4xl overflow-hidden'>
           <DialogHeader>
             <DialogTitle>
               Backup preview
-              {previewVersion !== null ? ` · version ${previewVersion}` : ''}
+              {backupPreviewQuery.data
+                ? ` · Version ${backupPreviewQuery.data.version}`
+                : ''}
             </DialogTitle>
             <DialogDescription>
-              Read-only preview of the selected backup.
+              Review the stored OpenClaw configuration before restoring it.
             </DialogDescription>
           </DialogHeader>
-          <MonacoJsonEditor
-            path={`inmemory://openclaw/backup-${previewVersion ?? 'preview'}.json`}
-            value={backupPreviewValue}
-            readOnly
-            height='65vh'
-          />
-          <DialogFooter>
-            <Button variant='outline' onClick={() => setPreviewVersion(null)}>
-              Close
-            </Button>
-          </DialogFooter>
+
+          <div className='min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/60 bg-background/80'>
+            <MonacoJsonEditor
+              value={backupPreviewValue}
+              height='60vh'
+              path={`backup-preview-${previewVersion ?? 'unknown'}.json`}
+              readOnly
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </div>

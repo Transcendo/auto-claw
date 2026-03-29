@@ -16,7 +16,7 @@ import type {
 
 const CONFIG_DIR_NAME = '.auto-claw'
 const CONFIG_FILE_NAME = 'config.json'
-const CONFIG_VERSION = 2
+const CONFIG_VERSION = 3
 const DEFAULT_ENVIRONMENT_PORT = 18789
 
 export type AutoClawConfig = {
@@ -84,8 +84,6 @@ export function createDefaultGlobalSettings(): GlobalSettings {
   return {
     runMode: 'global',
     sourcePath: null,
-    launchMode: 'daemon',
-    runtimeProcess: null,
   }
 }
 
@@ -101,8 +99,6 @@ function normalizeGlobalSettings(value: unknown): GlobalSettings {
       typeof value.sourcePath === 'string' && value.sourcePath.trim().length > 0
         ? resolve(value.sourcePath.trim())
         : null,
-    launchMode: value.launchMode === 'runtime' ? 'runtime' : 'daemon',
-    runtimeProcess: normalizeRuntimeProcess(value.runtimeProcess),
   }
 }
 
@@ -124,6 +120,8 @@ function normalizeEnvironmentRecord(value: unknown): EnvironmentRecord | null {
     id,
     openclawPath,
     port: normalizePort(value.port),
+    launchMode: value.launchMode === 'runtime' ? 'runtime' : 'daemon',
+    runtimeProcess: normalizeRuntimeProcess(value.runtimeProcess),
     createdAt,
     updatedAt,
   }

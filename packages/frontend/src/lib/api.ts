@@ -38,10 +38,22 @@ export async function fetchSettings() {
 export async function updateGlobalSettingsRequest(payload: {
   runMode: GlobalSettings['runMode']
   sourcePath: string | null
-  launchMode: GlobalSettings['launchMode']
 }) {
   const { data } = await api.put<{ global: GlobalSettings }>('/settings/global', payload)
   return data.global
+}
+
+export async function updateEnvironmentSettingsRequest(
+  environmentId: string,
+  payload: {
+    launchMode: EnvironmentRecord['launchMode']
+  }
+) {
+  const { data } = await api.put<{ item: EnvironmentRecord }>(
+    `/environments/${environmentId}/settings`,
+    payload
+  )
+  return data.item
 }
 
 export async function createEnvironmentRequest(payload: {
@@ -77,6 +89,11 @@ export async function fetchEnvironmentStatus(environmentId: string) {
   const { data } = await api.get<EnvironmentStatus>(
     `/environments/${environmentId}/status`
   )
+  return data
+}
+
+export async function setupEnvironmentRequest(environmentId: string) {
+  const { data } = await api.post(`/environments/${environmentId}/setup`)
   return data
 }
 

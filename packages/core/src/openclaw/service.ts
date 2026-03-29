@@ -1,21 +1,14 @@
 import { spawn } from 'node:child_process'
-import {
-  closeSync,
-  existsSync,
-  mkdirSync,
-  openSync,
-} from 'node:fs'
-import { basename, join, resolve } from 'node:path'
-import {
-  getAutoClawDirectoryPath,
-  readAutoClawConfig,
-} from '../app-config'
+import { closeSync, openSync } from 'node:fs'
+import { basename, join } from 'node:path'
+import { createLogger, createRuntimeLogPath } from '../logger'
 import { getEnvironmentById } from '../environments'
 import { CoreError } from '../errors'
 import {
-  getAutoClawSettings,
+  getEnvironmentLaunchMode,
+  getEnvironmentRuntimeProcess,
   getGlobalSettings,
-  setManagedRuntimeProcess,
+  setEnvironmentRuntimeProcess,
 } from '../settings'
 import type {
   ManagedRuntimeProcess,
@@ -25,6 +18,8 @@ import type {
   OpenClawServiceStatus,
   OpenClawVersionCheckResult,
 } from './types'
+
+const logger = createLogger('openclaw.service')
 
 type CommandContext = {
   environmentId: string
@@ -63,10 +58,6 @@ function createCommandError(title: string, message: string) {
   })
 }
 
-function resolveConfigPath(openclawPath: string) {
-  return resolve(openclawPath, 'openclaw.json')
-}
-
 function ensureSourcePathForExecution() {
   const settings = getGlobalSettings()
   if (settings.runMode === 'source' && !settings.sourcePath) {
@@ -87,7 +78,8 @@ function buildCommandContext(
   const environment = getEnvironmentById(environmentId)
   const env = {
     ...process.env,
-    OPENCLAW_CONFIG_PATH: resolveConfigPath(environment.openclawPath),
+    OPENCLAW_STATE_DIR: environment.openclawPath,
+    OPENCLAW_CONFIG_PATH: join(environment.openclawPath, 'openclaw.json'),
     OPENCLAW_GATEWAY_PORT: String(environment.port),
   } satisfies NodeJS.ProcessEnv
 
@@ -102,7 +94,7 @@ function buildCommandContext(
     cwd: settings.runMode === 'source' ? settings.sourcePath : null,
     env,
     runMode: settings.runMode,
-    launchMode: settings.launchMode,
+    launchMode: getEnvironmentLaunchMode(environmentId),
   }
 }
 
@@ -110,6 +102,12 @@ function runCommand(
   context: CommandContext,
   timeoutMs = 20000
 ): Promise<OpenClawCommandResult> {
+  logger.info('running command', {
+    environmentId: context.environmentId,
+    command: context.command,
+    cwd: context.cwd,
+  })
+
   return new Promise((resolveResult) => {
     const [file, ...args] = context.command
     const child = spawn(file, args, {
@@ -135,17 +133,26 @@ function runCommand(
 
       finished = true
       clearTimeout(timeout)
+
+      logger.info('command finished', {
+        environmentId: context.environmentId,
+        command: context.command,
+        ok: payload.ok,
+        exitCode: payload.exitCode,
+        error: payload.error,
+      })
+
       resolveResult(payload)
     }
 
     child.stdout?.setEncoding('utf8')
     child.stderr?.setEncoding('utf8')
 
-    child.stdout?.on('data', chunk => {
+    child.stdout?.on('data', (chunk) => {
       stdout += chunk
     })
 
-    child.stderr?.on('data', chunk => {
+    child.stderr?.on('data', (chunk) => {
       stderr += chunk
     })
 
@@ -203,12 +210,6 @@ function pickVersionOutput(result: OpenClawCommandResult) {
   return undefined
 }
 
-function getRuntimeLogsDirectory() {
-  const logsDir = join(getAutoClawDirectoryPath(), 'runtime-logs')
-  mkdirSync(logsDir, { recursive: true })
-  return logsDir
-}
-
 function isProcessAlive(pid: number) {
   try {
     process.kill(pid, 0)
@@ -222,85 +223,6 @@ function isProcessAlive(pid: number) {
 
     return code === 'EPERM'
   }
-}
-
-function ensureManagedRuntimeStopped() {
-  const runtimeProcess = getGlobalSettings().runtimeProcess
-  if (!runtimeProcess) {
-    return null
-  }
-
-  if (!isProcessAlive(runtimeProcess.pid)) {
-    setManagedRuntimeProcess(null)
-    return null
-  }
-
-  return runtimeProcess
-}
-
-function toStatusBase(
-  context: CommandContext,
-  extra?: Partial<OpenClawServiceStatus>
-): OpenClawServiceStatus {
-  return {
-    launchMode: context.launchMode,
-    runMode: context.runMode,
-    environmentId: context.environmentId,
-    command: context.command,
-    cwd: context.cwd,
-    installed: false,
-    running: false,
-    stdout: '',
-    stderr: '',
-    ...extra,
-  }
-}
-
-async function runDaemonAction(
-  environmentId: string,
-  action: OpenClawServiceAction
-): Promise<OpenClawServiceActionResult> {
-  const context = buildCommandContext(environmentId, ['gateway', action, '--json'])
-  const result = await runCommand(context)
-  const payload = parseJsonOutput<DaemonActionPayload>(result.stdout)
-  const succeeded = result.ok
-
-  return {
-    ...toStatusBase(context, {
-      installed: Boolean(payload?.service?.loaded),
-      running: succeeded && (action === 'start' || action === 'restart'),
-      stdout: result.stdout,
-      stderr: result.stderr,
-      error: succeeded
-        ? undefined
-        : ((result.error ?? result.stderr.trim()) || 'Command failed'),
-    }),
-    action,
-  }
-}
-
-function normalizeDaemonStatus(
-  environmentId: string,
-  context: CommandContext,
-  result: OpenClawCommandResult
-) {
-  const payload = parseJsonOutput<DaemonStatusPayload & Record<string, unknown>>(
-    result.stdout
-  )
-
-  return toStatusBase(context, {
-    environmentId,
-    installed: Boolean(payload?.service?.loaded),
-    running:
-      payload?.service?.runtime?.status === 'running'
-      || payload?.rpc?.ok === true,
-    stdout: result.stdout,
-    stderr: result.stderr,
-    error: result.ok
-      ? undefined
-      : ((result.error ?? result.stderr.trim()) || 'Command failed'),
-    statusPayload: payload ?? undefined,
-  })
 }
 
 function buildRuntimeProcessRecord(
@@ -317,6 +239,29 @@ function buildRuntimeProcessRecord(
     command: context.command,
     cwd: context.cwd,
     logPath,
+  }
+}
+
+function toStatusBase(
+  context: CommandContext,
+  extra?: Partial<OpenClawServiceStatus>
+): OpenClawServiceStatus {
+  return {
+    launchMode: context.launchMode,
+    runMode: context.runMode,
+    environmentId: context.environmentId,
+    command: context.command,
+    cwd: context.cwd,
+    environmentVariables: {
+      OPENCLAW_STATE_DIR: context.env.OPENCLAW_STATE_DIR ?? '',
+      OPENCLAW_CONFIG_PATH: context.env.OPENCLAW_CONFIG_PATH ?? '',
+      OPENCLAW_GATEWAY_PORT: context.env.OPENCLAW_GATEWAY_PORT ?? '',
+    },
+    installed: false,
+    running: false,
+    stdout: '',
+    stderr: '',
+    ...extra,
   }
 }
 
@@ -350,22 +295,40 @@ async function waitForRuntimeStart(child: ReturnType<typeof spawn>) {
   })
 }
 
-async function stopRuntimeProcess(runtimeProcess: ManagedRuntimeProcess | null) {
+function getHealthyRuntimeProcess(environmentId: string) {
+  const runtimeProcess = getEnvironmentRuntimeProcess(environmentId)
+  if (!runtimeProcess) {
+    return null
+  }
+
+  if (isProcessAlive(runtimeProcess.pid)) {
+    return runtimeProcess
+  }
+
+  logger.warn('runtime process is no longer alive, clearing record', {
+    environmentId,
+    pid: runtimeProcess.pid,
+  })
+  setEnvironmentRuntimeProcess(environmentId, null)
+  return null
+}
+
+async function stopRuntimeProcess(environmentId: string) {
+  const runtimeProcess = getHealthyRuntimeProcess(environmentId)
   if (!runtimeProcess) {
     return false
   }
 
-  if (!isProcessAlive(runtimeProcess.pid)) {
-    setManagedRuntimeProcess(null)
-    return false
-  }
-
+  logger.info('stopping runtime process', {
+    environmentId,
+    pid: runtimeProcess.pid,
+  })
   process.kill(runtimeProcess.pid, 'SIGTERM')
 
   const deadline = Date.now() + 5000
   while (Date.now() < deadline) {
     if (!isProcessAlive(runtimeProcess.pid)) {
-      setManagedRuntimeProcess(null)
+      setEnvironmentRuntimeProcess(environmentId, null)
       return true
     }
 
@@ -373,51 +336,76 @@ async function stopRuntimeProcess(runtimeProcess: ManagedRuntimeProcess | null) 
   }
 
   process.kill(runtimeProcess.pid, 'SIGKILL')
-  setManagedRuntimeProcess(null)
+  setEnvironmentRuntimeProcess(environmentId, null)
   return true
 }
 
-function getRuntimeStatusForEnvironment(
-  environmentId: string
+function normalizeDaemonStatus(
+  environmentId: string,
+  context: CommandContext,
+  result: OpenClawCommandResult
 ) {
+  const payload = parseJsonOutput<DaemonStatusPayload & Record<string, unknown>>(
+    result.stdout
+  )
+
+  return toStatusBase(context, {
+    environmentId,
+    installed: Boolean(payload?.service?.loaded),
+    running:
+      payload?.service?.runtime?.status === 'running'
+      || payload?.rpc?.ok === true,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    error: result.ok
+      ? undefined
+      : ((result.error ?? result.stderr.trim()) || 'Command failed'),
+    statusPayload: payload ?? undefined,
+  })
+}
+
+async function runDaemonAction(
+  environmentId: string,
+  action: OpenClawServiceAction
+): Promise<OpenClawServiceActionResult> {
+  const context = buildCommandContext(environmentId, ['gateway', action, '--json'])
+  const result = await runCommand(context)
+  const payload = parseJsonOutput<DaemonActionPayload>(result.stdout)
+  const succeeded = result.ok
+
+  return {
+    ...toStatusBase(context, {
+      installed: Boolean(payload?.service?.loaded),
+      running: succeeded && (action === 'start' || action === 'restart'),
+      stdout: result.stdout,
+      stderr: result.stderr,
+      error: succeeded
+        ? undefined
+        : ((result.error ?? result.stderr.trim()) || 'Command failed'),
+    }),
+    action,
+  }
+}
+
+function getRuntimeStatusForEnvironment(environmentId: string) {
   const context = buildCommandContext(environmentId, ['gateway', 'run'])
-  const runtimeProcess = ensureManagedRuntimeStopped()
+  const runtimeProcess = getHealthyRuntimeProcess(environmentId)
 
   if (!runtimeProcess) {
     return toStatusBase(context)
   }
 
-  const running = isProcessAlive(runtimeProcess.pid)
-  if (!running) {
-    setManagedRuntimeProcess(null)
-    return toStatusBase(context)
-  }
-
   return toStatusBase(context, {
-    running: runtimeProcess.environmentId === environmentId,
-    pid: runtimeProcess.environmentId === environmentId ? runtimeProcess.pid : undefined,
-    startedAt:
-      runtimeProcess.environmentId === environmentId
-        ? runtimeProcess.startedAt
-        : undefined,
-    logPath:
-      runtimeProcess.environmentId === environmentId
-        ? runtimeProcess.logPath
-        : undefined,
-    activeEnvironmentId:
-      runtimeProcess.environmentId === environmentId
-        ? undefined
-        : runtimeProcess.environmentId,
+    running: true,
+    pid: runtimeProcess.pid,
+    startedAt: runtimeProcess.startedAt,
+    logPath: runtimeProcess.logPath,
   })
 }
 
-export function getRuntimeServiceStatus(environmentId: string) {
-  return getRuntimeStatusForEnvironment(environmentId)
-}
-
 export async function getOpenClawServiceStatus(environmentId: string) {
-  const settings = getAutoClawSettings()
-  if (settings.global.launchMode === 'runtime') {
+  const launchMode = getEnvironmentLaunchMode(environmentId)
+  if (launchMode === 'runtime') {
     return getRuntimeStatusForEnvironment(environmentId)
   }
 
@@ -438,13 +426,18 @@ export async function checkOpenClawVersion(
   }
 }
 
+export async function setupOpenClawEnvironment(environmentId: string) {
+  const context = buildCommandContext(environmentId, ['setup'])
+  return await runCommand(context, 120000)
+}
+
 export async function installOpenClawService(environmentId: string) {
   return await runDaemonAction(environmentId, 'install')
 }
 
 export async function startOpenClawService(environmentId: string) {
-  const settings = getAutoClawSettings()
-  if (settings.global.launchMode === 'runtime') {
+  const launchMode = getEnvironmentLaunchMode(environmentId)
+  if (launchMode === 'runtime') {
     return await startOpenClawRuntime(environmentId)
   }
 
@@ -452,8 +445,8 @@ export async function startOpenClawService(environmentId: string) {
 }
 
 export async function stopOpenClawService(environmentId: string) {
-  const settings = getAutoClawSettings()
-  if (settings.global.launchMode === 'runtime') {
+  const launchMode = getEnvironmentLaunchMode(environmentId)
+  if (launchMode === 'runtime') {
     return await stopOpenClawRuntime(environmentId)
   }
 
@@ -461,8 +454,8 @@ export async function stopOpenClawService(environmentId: string) {
 }
 
 export async function restartOpenClawService(environmentId: string) {
-  const settings = getAutoClawSettings()
-  if (settings.global.launchMode === 'runtime') {
+  const launchMode = getEnvironmentLaunchMode(environmentId)
+  if (launchMode === 'runtime') {
     return await restartOpenClawRuntime(environmentId)
   }
 
@@ -473,15 +466,9 @@ export async function startOpenClawRuntime(
   environmentId: string
 ): Promise<OpenClawServiceActionResult> {
   const context = buildCommandContext(environmentId, ['gateway', 'run'])
-  const existingRuntime = ensureManagedRuntimeStopped()
-  if (existingRuntime) {
-    await stopRuntimeProcess(existingRuntime)
-  }
+  await stopRuntimeProcess(environmentId)
 
-  const logPath = join(
-    getRuntimeLogsDirectory(),
-    `runtime-${environmentId}-${Date.now()}.log`
-  )
+  const logPath = createRuntimeLogPath(environmentId)
   const logFd = openSync(logPath, 'a')
   const [file, ...args] = context.command
   const child = spawn(file, args, {
@@ -494,6 +481,10 @@ export async function startOpenClawRuntime(
   closeSync(logFd)
 
   if (!startResult.ok || !child.pid) {
+    logger.error('failed to start runtime process', {
+      environmentId,
+      error: startResult.error,
+    })
     return {
       ...toStatusBase(context, {
         stderr: startResult.error ?? '',
@@ -505,7 +496,12 @@ export async function startOpenClawRuntime(
 
   child.unref()
   const runtimeProcess = buildRuntimeProcessRecord(context, child.pid, logPath)
-  setManagedRuntimeProcess(runtimeProcess)
+  setEnvironmentRuntimeProcess(environmentId, runtimeProcess)
+  logger.info('runtime process started', {
+    environmentId,
+    pid: child.pid,
+    logPath,
+  })
 
   return {
     ...toStatusBase(context, {
@@ -522,17 +518,11 @@ export async function stopOpenClawRuntime(
   environmentId: string
 ): Promise<OpenClawServiceActionResult> {
   const context = buildCommandContext(environmentId, ['gateway', 'run'])
-  const runtimeProcess = ensureManagedRuntimeStopped()
-  const stopped = await stopRuntimeProcess(runtimeProcess)
+  const stopped = await stopRuntimeProcess(environmentId)
 
   return {
     ...toStatusBase(context, {
-      installed: false,
       running: false,
-      activeEnvironmentId:
-        runtimeProcess && runtimeProcess.environmentId !== environmentId
-          ? runtimeProcess.environmentId
-          : undefined,
       stdout: stopped ? 'Runtime stopped' : '',
     }),
     action: 'stop',
@@ -557,6 +547,7 @@ export function getOpenClawCommandPreview(environmentId: string) {
     command: context.command,
     cwd: context.cwd,
     env: {
+      OPENCLAW_STATE_DIR: context.env.OPENCLAW_STATE_DIR,
       OPENCLAW_CONFIG_PATH: context.env.OPENCLAW_CONFIG_PATH,
       OPENCLAW_GATEWAY_PORT: context.env.OPENCLAW_GATEWAY_PORT,
     },
@@ -565,20 +556,4 @@ export function getOpenClawCommandPreview(environmentId: string) {
 
 export function getRuntimeLogName(logPath: string) {
   return basename(logPath)
-}
-
-export function hasManagedRuntimeProcess() {
-  return readAutoClawConfig().global.runtimeProcess !== null
-}
-
-export function getManagedRuntimeLogPath() {
-  return readAutoClawConfig().global.runtimeProcess?.logPath ?? null
-}
-
-export function getManagedRuntimeProcess() {
-  return readAutoClawConfig().global.runtimeProcess
-}
-
-export function getOpenClawRuntimeLogsDirectory() {
-  return existsSync(getRuntimeLogsDirectory()) ? getRuntimeLogsDirectory() : null
 }

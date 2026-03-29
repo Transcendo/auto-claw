@@ -5,6 +5,7 @@ import process from 'node:process'
 import {
   buildGreeting,
   checkOpenClawVersion,
+  createLogger,
   createEnvironment,
   deleteEnvironment,
   getEnvironmentStatus,
@@ -26,10 +27,12 @@ import {
   listOpenClawBackups,
   restoreOpenClawBackup,
   restartOpenClawService,
+  setupOpenClawEnvironment,
   startOpenClawService,
   stopOpenClawService,
   installOpenClawService,
   updateEnvironment,
+  updateEnvironmentSettings,
   updateGlobalSettings,
   updateOpenClawAgentsSection,
   updateOpenClawChannelsSection,
@@ -59,6 +62,7 @@ const genericSectionKeys = [
 ] as const
 
 const app = new Hono()
+const logger = createLogger('backend.http')
 
 function jsonBody<T extends Record<string, unknown>>(value: unknown) {
   return typeof value === 'object' && value !== null ? (value as T) : ({} as T)
@@ -160,8 +164,7 @@ app.onError((error, c) => {
       : 'Internal Server Error'
   const message = error instanceof Error ? error.message : 'Unexpected server error'
 
-  console.error('[backend] request failed')
-  console.error(error)
+  logger.error('request failed', error)
 
   return c.json(
     {
@@ -193,17 +196,27 @@ app.put('/api/settings/global', async (c) => {
   const body = jsonBody<{
     runMode?: 'global' | 'source'
     sourcePath?: string | null
-    launchMode?: 'daemon' | 'runtime'
   }>(await c.req.json())
 
   const global = updateGlobalSettings({
     runMode: body.runMode,
     sourcePath:
       body.sourcePath === null ? null : getOptionalString(body, 'sourcePath'),
-    launchMode: body.launchMode,
   })
 
   return c.json({ global })
+})
+
+app.put('/api/environments/:id/settings', async (c) => {
+  const body = jsonBody<{
+    launchMode?: 'daemon' | 'runtime'
+  }>(await c.req.json())
+
+  const item = updateEnvironmentSettings(c.req.param('id'), {
+    launchMode: body.launchMode,
+  })
+
+  return c.json({ item })
 })
 
 app.post('/api/environments', async (c) => {
@@ -375,6 +388,11 @@ app.post('/api/settings/check-version', async (c) => {
   return c.json(result)
 })
 
+app.post('/api/environments/:id/setup', async (c) => {
+  const result = await setupOpenClawEnvironment(c.req.param('id'))
+  return c.json(result)
+})
+
 app.get('/api/settings/service/status', async (c) => {
   const environmentId = c.req.query('environmentId') ?? ''
   const status = await getOpenClawServiceStatus(environmentId)
@@ -417,7 +435,7 @@ if (distDir && existsSync(distDir)) {
   })
 }
 else if (distDir) {
-  console.warn(`[backend] FRONTEND_DIST not found: ${distDir}`)
+  logger.warn('FRONTEND_DIST not found', { distDir })
 }
 
 const port = Number(process.env.PORT ?? 3000)
@@ -426,10 +444,9 @@ try {
   initializeAutoClawConfig()
 }
 catch (error) {
-  console.error('[backend] failed to initialize config storage')
-  console.error(error instanceof Error ? error.message : error)
+  logger.error('failed to initialize config storage', error)
   process.exit(1)
 }
 
-console.log(`[backend] listening on http://localhost:${port}`)
+logger.info('listening', { url: `http://localhost:${port}` })
 serve({ fetch: app.fetch, port })

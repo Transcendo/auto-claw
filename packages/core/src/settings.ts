@@ -7,6 +7,7 @@ import {
 } from './app-config'
 import { CoreError } from './errors'
 import type {
+  EnvironmentRecord,
   GlobalSettings,
   ManagedRuntimeProcess,
   OpenClawLaunchMode,
@@ -66,6 +67,41 @@ function assertValidLaunchMode(launchMode: string): OpenClawLaunchMode {
   })
 }
 
+function getEnvironmentIndexOrThrow(environmentId: string) {
+  const config = readAutoClawConfig()
+  const index = config.environments.findIndex(
+    environment => environment.id === environmentId
+  )
+
+  if (index < 0) {
+    throw new CoreError({
+      statusCode: 404,
+      title: 'Environment Not Found',
+      message: `Environment ${environmentId} was not found`,
+    })
+  }
+
+  return { config, index }
+}
+
+function updateEnvironmentRecord(
+  environmentId: string,
+  updater: (environment: EnvironmentRecord) => EnvironmentRecord
+) {
+  const { config, index } = getEnvironmentIndexOrThrow(environmentId)
+  const current = config.environments[index]
+  const next = updater(current)
+  const environments = [...config.environments]
+  environments[index] = next
+
+  writeAutoClawConfig({
+    ...config,
+    environments,
+  })
+
+  return next
+}
+
 export function getGlobalSettings() {
   return readAutoClawConfig().global
 }
@@ -80,7 +116,6 @@ export function getAutoClawSettings() {
 type UpdateGlobalSettingsInput = {
   runMode?: OpenClawRunMode
   sourcePath?: string | null
-  launchMode?: OpenClawLaunchMode
 }
 
 export function updateGlobalSettings(input: UpdateGlobalSettingsInput) {
@@ -97,10 +132,6 @@ export function updateGlobalSettings(input: UpdateGlobalSettingsInput) {
       input.sourcePath === undefined
         ? current.sourcePath
         : assertValidSourcePath(input.sourcePath),
-    launchMode:
-      input.launchMode === undefined
-        ? current.launchMode
-        : assertValidLaunchMode(input.launchMode),
   }
 
   writeAutoClawConfig({
@@ -111,14 +142,58 @@ export function updateGlobalSettings(input: UpdateGlobalSettingsInput) {
   return next
 }
 
-export function setManagedRuntimeProcess(runtimeProcess: ManagedRuntimeProcess | null) {
-  const config = readAutoClawConfig()
+type UpdateEnvironmentSettingsInput = {
+  launchMode?: OpenClawLaunchMode
+}
 
-  writeAutoClawConfig({
-    ...config,
-    global: {
-      ...config.global,
-      runtimeProcess,
-    },
+export function updateEnvironmentSettings(
+  environmentId: string,
+  input: UpdateEnvironmentSettingsInput
+) {
+  return updateEnvironmentRecord(environmentId, (environment) => {
+    const nextLaunchMode
+      = input.launchMode === undefined
+        ? environment.launchMode
+        : assertValidLaunchMode(input.launchMode)
+
+    if (
+      environment.launchMode === 'runtime'
+      && nextLaunchMode === 'daemon'
+      && environment.runtimeProcess
+    ) {
+      try {
+        process.kill(environment.runtimeProcess.pid, 'SIGTERM')
+      }
+      catch {}
+    }
+
+    return {
+      ...environment,
+      launchMode: nextLaunchMode,
+      runtimeProcess:
+        nextLaunchMode === 'runtime' ? environment.runtimeProcess : null,
+      updatedAt: new Date().toISOString(),
+    }
   })
+}
+
+export function getEnvironmentLaunchMode(environmentId: string) {
+  const { config, index } = getEnvironmentIndexOrThrow(environmentId)
+  return config.environments[index].launchMode
+}
+
+export function getEnvironmentRuntimeProcess(environmentId: string) {
+  const { config, index } = getEnvironmentIndexOrThrow(environmentId)
+  return config.environments[index].runtimeProcess
+}
+
+export function setEnvironmentRuntimeProcess(
+  environmentId: string,
+  runtimeProcess: ManagedRuntimeProcess | null
+) {
+  return updateEnvironmentRecord(environmentId, environment => ({
+    ...environment,
+    runtimeProcess,
+    updatedAt: new Date().toISOString(),
+  }))
 }

@@ -85,6 +85,7 @@ export function EnvironmentProvider({
     = environmentsQuery.data?.find(
       environment => environment.id === selectedEnvironmentId
     ) ?? null
+  const resolvedEnvironmentId = selectedEnvironment?.id ?? null
 
   useEffect(() => {
     const environments = environmentsQuery.data
@@ -106,9 +107,20 @@ export function EnvironmentProvider({
       return
     }
 
+    const selectedEnvironment = environments.find(
+      environment => environment.id === selectedEnvironmentId
+    )
+
+    if (selectedEnvironment) {
+      return
+    }
+
+    if (selectedEnvironmentId !== null && environmentsQuery.isFetching) {
+      return
+    }
+
     const nextEnvironment
-      = environments.find(environment => environment.id === selectedEnvironmentId)
-        ?? environments.find(environment => environment.id === readStoredEnvironmentId())
+      = environments.find(environment => environment.id === readStoredEnvironmentId())
         ?? environments[0]
 
     if (nextEnvironment && nextEnvironment.id !== selectedEnvironmentId) {
@@ -116,7 +128,7 @@ export function EnvironmentProvider({
         setSelectedEnvironmentIdState(nextEnvironment.id)
       })
     }
-  }, [environmentsQuery.data, selectedEnvironmentId])
+  }, [environmentsQuery.data, environmentsQuery.isFetching, selectedEnvironmentId])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -132,9 +144,10 @@ export function EnvironmentProvider({
   }, [selectedEnvironmentId])
 
   const environmentStatusQuery = useQuery({
-    queryKey: ['environment-status', selectedEnvironmentId],
-    queryFn: () => fetchEnvironmentStatus(selectedEnvironmentId as string),
-    enabled: Boolean(selectedEnvironmentId),
+    queryKey: ['environment-status', resolvedEnvironmentId],
+    queryFn: () => fetchEnvironmentStatus(resolvedEnvironmentId as string),
+    enabled: Boolean(resolvedEnvironmentId),
+    retry: false,
   })
 
   useEffect(() => {
@@ -163,7 +176,7 @@ export function EnvironmentProvider({
 
   useEffect(() => {
     const status = environmentStatusQuery.data
-    if (!selectedEnvironmentId || !status || !shouldGuardAppPath(location.pathname)) {
+    if (!resolvedEnvironmentId || !status || !shouldGuardAppPath(location.pathname)) {
       return
     }
 
@@ -172,7 +185,7 @@ export function EnvironmentProvider({
       return
     }
 
-    const toastKey = `invalid-environment:${selectedEnvironmentId}:${status.error ?? 'unknown'}`
+    const toastKey = `invalid-environment:${resolvedEnvironmentId}:${status.error ?? 'unknown'}`
     if (lastToastKeyRef.current !== toastKey) {
       toast.error(status.error ?? 'Failed to load openclaw.json')
       lastToastKeyRef.current = toastKey
@@ -183,7 +196,7 @@ export function EnvironmentProvider({
     environmentStatusQuery.data,
     location.pathname,
     navigate,
-    selectedEnvironmentId,
+    resolvedEnvironmentId,
   ])
 
   const value = useMemo<EnvironmentContextValue>(() => {

@@ -131,6 +131,8 @@ export function createEnvironment(input: EnvironmentInput) {
     id: randomUUID(),
     openclawPath,
     port,
+    launchMode: 'daemon',
+    runtimeProcess: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -190,6 +192,7 @@ export function updateEnvironment(
 
 export function deleteEnvironment(id: string) {
   const config = readAutoClawConfig()
+  const current = config.environments.find(environment => environment.id === id)
   const nextEnvironments = config.environments.filter(environment => environment.id !== id)
 
   if (nextEnvironments.length === config.environments.length) {
@@ -198,6 +201,13 @@ export function deleteEnvironment(id: string) {
       title: 'Environment Not Found',
       message: `Environment ${id} was not found`,
     })
+  }
+
+  if (current?.runtimeProcess) {
+    try {
+      process.kill(current.runtimeProcess.pid, 'SIGTERM')
+    }
+    catch {}
   }
 
   const defaultEnvironmentId
