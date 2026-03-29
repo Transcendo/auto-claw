@@ -759,8 +759,13 @@ export function SettingsPage() {
                 )}
 
                 {!isLoadingEnvironments && environments.length === 0 && (
-                  <div className='rounded-2xl border border-dashed border-border/70 bg-muted/20 p-8 text-sm text-muted-foreground'>
-                    No environments configured yet. Create one to begin.
+                  <div className='rounded-2xl border border-dashed border-border/70 bg-muted/20 p-8'>
+                    <div className='text-sm text-muted-foreground'>
+                      No environments configured yet. Create one to begin.
+                    </div>
+                    <div className='mt-4'>
+                      <Button onClick={() => setIsCreateDialogOpen(true)}>Create</Button>
+                    </div>
                   </div>
                 )}
 
