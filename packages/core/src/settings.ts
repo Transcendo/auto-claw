@@ -6,6 +6,11 @@ import {
   writeAutoClawConfig,
 } from './app-config'
 import { CoreError } from './errors'
+import { createLogger } from './logger'
+import {
+  stopOpenClawRuntime,
+  stopAndUninstallDaemon,
+} from './openclaw/service'
 import type {
   EnvironmentRecord,
   GlobalSettings,
@@ -13,6 +18,8 @@ import type {
   OpenClawLaunchMode,
   OpenClawRunMode,
 } from './openclaw/types'
+
+const logger = createLogger('settings')
 
 function assertValidSourcePath(sourcePath: string | null) {
   if (sourcePath === null) {
@@ -146,35 +153,43 @@ type UpdateEnvironmentSettingsInput = {
   launchMode?: OpenClawLaunchMode
 }
 
-export function updateEnvironmentSettings(
+export async function updateEnvironmentSettings(
   environmentId: string,
   input: UpdateEnvironmentSettingsInput
 ) {
-  return updateEnvironmentRecord(environmentId, (environment) => {
-    const nextLaunchMode
-      = input.launchMode === undefined
-        ? environment.launchMode
-        : assertValidLaunchMode(input.launchMode)
+  const { config, index } = getEnvironmentIndexOrThrow(environmentId)
+  const current = config.environments[index]
+  const nextLaunchMode
+    = input.launchMode === undefined
+      ? current.launchMode
+      : assertValidLaunchMode(input.launchMode)
 
-    if (
-      environment.launchMode === 'runtime'
-      && nextLaunchMode === 'daemon'
-      && environment.runtimeProcess
-    ) {
+  if (current.launchMode !== nextLaunchMode) {
+    if (current.launchMode === 'runtime') {
       try {
-        process.kill(environment.runtimeProcess.pid, 'SIGTERM')
+        await stopOpenClawRuntime(environmentId)
       }
-      catch {}
+      catch (error) {
+        logger.warn('failed to stop runtime during mode switch', { environmentId, error })
+      }
     }
+    else if (current.launchMode === 'daemon') {
+      try {
+        await stopAndUninstallDaemon(environmentId)
+      }
+      catch (error) {
+        logger.warn('failed to stop daemon during mode switch', { environmentId, error })
+      }
+    }
+  }
 
-    return {
-      ...environment,
-      launchMode: nextLaunchMode,
-      runtimeProcess:
-        nextLaunchMode === 'runtime' ? environment.runtimeProcess : null,
-      updatedAt: new Date().toISOString(),
-    }
-  })
+  return updateEnvironmentRecord(environmentId, environment => ({
+    ...environment,
+    launchMode: nextLaunchMode,
+    runtimeProcess:
+      nextLaunchMode === 'runtime' ? environment.runtimeProcess : null,
+    updatedAt: new Date().toISOString(),
+  }))
 }
 
 export function getEnvironmentLaunchMode(environmentId: string) {

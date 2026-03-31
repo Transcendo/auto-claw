@@ -16,6 +16,7 @@ import { Route as AuthenticatedSkillsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedPluginsRouteImport } from './routes/_authenticated/plugins'
 import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
 import { Route as AuthenticatedMcpRouteImport } from './routes/_authenticated/mcp'
+import { Route as AuthenticatedLogsRouteImport } from './routes/_authenticated/logs'
 import { Route as AuthenticatedHooksRouteImport } from './routes/_authenticated/hooks'
 import { Route as AuthenticatedGatewayRouteImport } from './routes/_authenticated/gateway'
 import { Route as AuthenticatedEnvRouteImport } from './routes/_authenticated/env'
@@ -80,6 +81,11 @@ const AuthenticatedModelsRoute = AuthenticatedModelsRouteImport.update({
 const AuthenticatedMcpRoute = AuthenticatedMcpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLogsRoute = AuthenticatedLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedHooksRoute = AuthenticatedHooksRouteImport.update({
@@ -271,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/env': typeof AuthenticatedEnvRoute
   '/gateway': typeof AuthenticatedGatewayRouteWithChildren
   '/hooks': typeof AuthenticatedHooksRouteWithChildren
+  '/logs': typeof AuthenticatedLogsRoute
   '/mcp': typeof AuthenticatedMcpRouteWithChildren
   '/models': typeof AuthenticatedModelsRouteWithChildren
   '/plugins': typeof AuthenticatedPluginsRoute
@@ -307,6 +314,7 @@ export interface FileRoutesByTo {
   '/env': typeof AuthenticatedEnvRoute
   '/gateway': typeof AuthenticatedGatewayRouteWithChildren
   '/hooks': typeof AuthenticatedHooksRouteWithChildren
+  '/logs': typeof AuthenticatedLogsRoute
   '/plugins': typeof AuthenticatedPluginsRoute
   '/skills': typeof AuthenticatedSkillsRoute
   '/': typeof AuthenticatedIndexRoute
@@ -342,6 +350,7 @@ export interface FileRoutesById {
   '/_authenticated/env': typeof AuthenticatedEnvRoute
   '/_authenticated/gateway': typeof AuthenticatedGatewayRouteWithChildren
   '/_authenticated/hooks': typeof AuthenticatedHooksRouteWithChildren
+  '/_authenticated/logs': typeof AuthenticatedLogsRoute
   '/_authenticated/mcp': typeof AuthenticatedMcpRouteWithChildren
   '/_authenticated/models': typeof AuthenticatedModelsRouteWithChildren
   '/_authenticated/plugins': typeof AuthenticatedPluginsRoute
@@ -384,6 +393,7 @@ export interface FileRouteTypes {
     | '/env'
     | '/gateway'
     | '/hooks'
+    | '/logs'
     | '/mcp'
     | '/models'
     | '/plugins'
@@ -420,6 +430,7 @@ export interface FileRouteTypes {
     | '/env'
     | '/gateway'
     | '/hooks'
+    | '/logs'
     | '/plugins'
     | '/skills'
     | '/'
@@ -454,6 +465,7 @@ export interface FileRouteTypes {
     | '/_authenticated/env'
     | '/_authenticated/gateway'
     | '/_authenticated/hooks'
+    | '/_authenticated/logs'
     | '/_authenticated/mcp'
     | '/_authenticated/models'
     | '/_authenticated/plugins'
@@ -540,6 +552,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof AuthenticatedMcpRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/logs': {
+      id: '/_authenticated/logs'
+      path: '/logs'
+      fullPath: '/logs'
+      preLoaderRoute: typeof AuthenticatedLogsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/hooks': {
@@ -933,6 +952,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEnvRoute: typeof AuthenticatedEnvRoute
   AuthenticatedGatewayRoute: typeof AuthenticatedGatewayRouteWithChildren
   AuthenticatedHooksRoute: typeof AuthenticatedHooksRouteWithChildren
+  AuthenticatedLogsRoute: typeof AuthenticatedLogsRoute
   AuthenticatedMcpRoute: typeof AuthenticatedMcpRouteWithChildren
   AuthenticatedModelsRoute: typeof AuthenticatedModelsRouteWithChildren
   AuthenticatedPluginsRoute: typeof AuthenticatedPluginsRoute
@@ -947,6 +967,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEnvRoute: AuthenticatedEnvRoute,
   AuthenticatedGatewayRoute: AuthenticatedGatewayRouteWithChildren,
   AuthenticatedHooksRoute: AuthenticatedHooksRouteWithChildren,
+  AuthenticatedLogsRoute: AuthenticatedLogsRoute,
   AuthenticatedMcpRoute: AuthenticatedMcpRouteWithChildren,
   AuthenticatedModelsRoute: AuthenticatedModelsRouteWithChildren,
   AuthenticatedPluginsRoute: AuthenticatedPluginsRoute,

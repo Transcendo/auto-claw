@@ -7,7 +7,11 @@ import {
   writeAutoClawConfig,
 } from './app-config'
 import { CoreError } from './errors'
+import { createLogger } from './logger'
+import { cleanupEnvironmentService } from './openclaw/service'
 import type { EnvironmentRecord } from './openclaw/types'
+
+const logger = createLogger('environments')
 
 function normalizeOpenClawPath(openclawPath: string) {
   return resolve(openclawPath.trim())
@@ -55,6 +59,52 @@ function assertValidEnvironmentPort(port: number) {
   return port
 }
 
+const PROFILE_PATTERN = /^[a-z0-9][a-z0-9-]*$/
+
+function assertValidProfile(profile: string) {
+  const trimmed = profile.trim()
+
+  if (!trimmed) {
+    throw new CoreError({
+      statusCode: 400,
+      title: 'Invalid Profile',
+      message: 'profile is required',
+    })
+  }
+
+  if (trimmed.toLowerCase() === 'default') {
+    throw new CoreError({
+      statusCode: 400,
+      title: 'Invalid Profile',
+      message: '"default" is reserved and cannot be used as a profile name',
+    })
+  }
+
+  if (!PROFILE_PATTERN.test(trimmed)) {
+    throw new CoreError({
+      statusCode: 400,
+      title: 'Invalid Profile',
+      message: 'profile must contain only lowercase letters, numbers, and hyphens, and start with a letter or number',
+    })
+  }
+
+  return trimmed
+}
+
+function assertUniqueProfile(profile: string, environments: EnvironmentRecord[], excludeId?: string) {
+  const duplicate = environments.find(
+    env => env.profile === profile && env.id !== excludeId
+  )
+
+  if (duplicate) {
+    throw new CoreError({
+      statusCode: 400,
+      title: 'Duplicate Profile',
+      message: `Profile "${profile}" is already in use by another environment`,
+    })
+  }
+}
+
 function findEnvironmentById(id: string) {
   return readAutoClawConfig().environments.find(environment => environment.id === id)
 }
@@ -94,6 +144,12 @@ export function getFirstEnvironment() {
   return environment
 }
 
+type CreateEnvironmentInput = {
+  profile: string
+  openclawPath: string
+  port: number
+}
+
 type EnvironmentInput = {
   openclawPath: string
   port: number
@@ -114,10 +170,14 @@ function matchesEnvironment(
   )
 }
 
-export function createEnvironment(input: EnvironmentInput) {
+export function createEnvironment(input: CreateEnvironmentInput) {
+  const profile = assertValidProfile(input.profile)
   const openclawPath = assertValidEnvironmentPath(input.openclawPath)
   const port = assertValidEnvironmentPort(input.port)
   const config = readAutoClawConfig()
+
+  assertUniqueProfile(profile, config.environments)
+
   const existing = config.environments.find(environment =>
     matchesEnvironment(environment, { openclawPath, port })
   )
@@ -129,6 +189,7 @@ export function createEnvironment(input: EnvironmentInput) {
   const now = new Date().toISOString()
   const environment: EnvironmentRecord = {
     id: randomUUID(),
+    profile,
     openclawPath,
     port,
     launchMode: 'daemon',
@@ -190,9 +251,8 @@ export function updateEnvironment(
   return nextEnvironment
 }
 
-export function deleteEnvironment(id: string) {
+export async function deleteEnvironment(id: string) {
   const config = readAutoClawConfig()
-  const current = config.environments.find(environment => environment.id === id)
   const nextEnvironments = config.environments.filter(environment => environment.id !== id)
 
   if (nextEnvironments.length === config.environments.length) {
@@ -203,11 +263,11 @@ export function deleteEnvironment(id: string) {
     })
   }
 
-  if (current?.runtimeProcess) {
-    try {
-      process.kill(current.runtimeProcess.pid, 'SIGTERM')
-    }
-    catch {}
+  try {
+    await cleanupEnvironmentService(id)
+  }
+  catch (error) {
+    logger.warn('failed to cleanup environment service during deletion', { id, error })
   }
 
   const defaultEnvironmentId

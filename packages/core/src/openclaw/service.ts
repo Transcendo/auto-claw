@@ -81,6 +81,7 @@ function buildCommandContext(
     OPENCLAW_STATE_DIR: environment.openclawPath,
     OPENCLAW_CONFIG_PATH: join(environment.openclawPath, 'openclaw.json'),
     OPENCLAW_GATEWAY_PORT: String(environment.port),
+    OPENCLAW_PROFILE: environment.profile,
   } satisfies NodeJS.ProcessEnv
 
   return {
@@ -426,6 +427,11 @@ export async function checkOpenClawVersion(
   }
 }
 
+export async function runOpenClawDoctorFix(environmentId: string): Promise<OpenClawCommandResult> {
+  const context = buildCommandContext(environmentId, ['doctor', '--fix'])
+  return await runCommand(context, 60000)
+}
+
 export async function setupOpenClawEnvironment(environmentId: string) {
   const context = buildCommandContext(environmentId, ['setup'])
   return await runCommand(context, 120000)
@@ -556,4 +562,52 @@ export function getOpenClawCommandPreview(environmentId: string) {
 
 export function getRuntimeLogName(logPath: string) {
   return basename(logPath)
+}
+
+export async function uninstallOpenClawService(environmentId: string) {
+  return await runDaemonAction(environmentId, 'uninstall')
+}
+
+export async function cleanupEnvironmentService(environmentId: string) {
+  const launchMode = getEnvironmentLaunchMode(environmentId)
+
+  if (launchMode === 'runtime') {
+    try {
+      await stopRuntimeProcess(environmentId)
+    }
+    catch (error) {
+      logger.warn('failed to stop runtime process during cleanup', { environmentId, error })
+    }
+    return
+  }
+
+  try {
+    await runDaemonAction(environmentId, 'stop')
+  }
+  catch (error) {
+    logger.warn('failed to stop daemon during cleanup', { environmentId, error })
+  }
+
+  try {
+    await runDaemonAction(environmentId, 'uninstall')
+  }
+  catch (error) {
+    logger.warn('failed to uninstall daemon during cleanup', { environmentId, error })
+  }
+}
+
+export async function stopAndUninstallDaemon(environmentId: string) {
+  try {
+    await runDaemonAction(environmentId, 'stop')
+  }
+  catch (error) {
+    logger.warn('failed to stop daemon during mode switch', { environmentId, error })
+  }
+
+  try {
+    await runDaemonAction(environmentId, 'uninstall')
+  }
+  catch (error) {
+    logger.warn('failed to uninstall daemon during mode switch', { environmentId, error })
+  }
 }

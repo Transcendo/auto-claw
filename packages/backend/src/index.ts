@@ -5,6 +5,7 @@ import process from 'node:process'
 import {
   buildGreeting,
   checkOpenClawVersion,
+  runOpenClawDoctorFix,
   createLogger,
   createEnvironment,
   deleteEnvironment,
@@ -39,7 +40,12 @@ import {
   updateOpenClawEnvFile,
   updateOpenClawGenericSection,
   updateOpenClawModelsSection,
+  readRuntimeLogs,
+  listAvailableLogFiles,
+  readOpenClawLogFile,
+  getEnvironmentById,
 } from '@auto-code/core'
+import type { LogFileType } from '@auto-code/core'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
@@ -212,7 +218,7 @@ app.put('/api/environments/:id/settings', async (c) => {
     launchMode?: 'daemon' | 'runtime'
   }>(await c.req.json())
 
-  const item = updateEnvironmentSettings(c.req.param('id'), {
+  const item = await updateEnvironmentSettings(c.req.param('id'), {
     launchMode: body.launchMode,
   })
 
@@ -220,10 +226,11 @@ app.put('/api/environments/:id/settings', async (c) => {
 })
 
 app.post('/api/environments', async (c) => {
-  const body = jsonBody<{ openclawPath?: string, port?: number | string }>(
+  const body = jsonBody<{ profile?: string, openclawPath?: string, port?: number | string }>(
     await c.req.json()
   )
   const item = createEnvironment({
+    profile: getRequiredString(body, 'profile'),
     openclawPath: getRequiredString(body, 'openclawPath'),
     port: getRequiredInteger(body, 'port'),
   })
@@ -243,8 +250,8 @@ app.put('/api/environments/:id', async (c) => {
   return c.json({ item })
 })
 
-app.delete('/api/environments/:id', (c) => {
-  deleteEnvironment(c.req.param('id'))
+app.delete('/api/environments/:id', async (c) => {
+  await deleteEnvironment(c.req.param('id'))
   return c.json({ ok: true })
 })
 
@@ -388,6 +395,12 @@ app.post('/api/settings/check-version', async (c) => {
   return c.json(result)
 })
 
+app.post('/api/settings/doctor-fix', async (c) => {
+  const body = jsonBody<{ environmentId?: string }>(await c.req.json())
+  const result = await runOpenClawDoctorFix(getRequiredString(body, 'environmentId'))
+  return c.json(result)
+})
+
 app.post('/api/environments/:id/setup', async (c) => {
   const result = await setupOpenClawEnvironment(c.req.param('id'))
   return c.json(result)
@@ -420,6 +433,37 @@ app.post('/api/settings/service/stop', async (c) => {
 app.post('/api/settings/service/restart', async (c) => {
   const body = jsonBody<{ environmentId?: string }>(await c.req.json())
   const result = await restartOpenClawService(getRequiredString(body, 'environmentId'))
+  return c.json(result)
+})
+
+app.get('/api/environments/:id/runtime/logs', async (c) => {
+  const environmentId = c.req.param('id')
+  const tail = Number(c.req.query('tail') ?? '500')
+  const after = Number(c.req.query('after') ?? '0')
+  const status = await getOpenClawServiceStatus(environmentId)
+  const result = readRuntimeLogs(environmentId, status.logPath, {
+    tail: Number.isFinite(tail) && tail > 0 ? tail : 500,
+    after: Number.isFinite(after) && after >= 0 ? after : 0,
+  })
+
+  return c.json(result)
+})
+
+app.get('/api/environments/:id/logs/files', async (c) => {
+  const environment = getEnvironmentById(c.req.param('id'))
+  const files = listAvailableLogFiles(environment.openclawPath)
+  return c.json({ files })
+})
+
+app.get('/api/environments/:id/logs/:type', async (c) => {
+  const environment = getEnvironmentById(c.req.param('id'))
+  const logType = c.req.param('type') as LogFileType
+  const tail = Number(c.req.query('tail') ?? '500')
+  const after = Number(c.req.query('after') ?? '0')
+  const result = readOpenClawLogFile(environment.openclawPath, logType, {
+    tail: Number.isFinite(tail) && tail > 0 ? tail : 500,
+    after: Number.isFinite(after) && after >= 0 ? after : 0,
+  })
   return c.json(result)
 })
 

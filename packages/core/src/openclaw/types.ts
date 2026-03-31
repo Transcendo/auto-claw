@@ -68,6 +68,7 @@ export type OpenClawValidationIssue = {
 
 export type EnvironmentRecord = {
   id: string
+  profile: string
   openclawPath: string
   port: number
   launchMode: OpenClawLaunchMode
@@ -202,7 +203,9 @@ export type OpenClawServiceStatus = {
   statusPayload?: Record<string, unknown>
 }
 
-export type OpenClawServiceAction = 'install' | 'start' | 'stop' | 'restart'
+export type LogFileType = 'gateway' | 'gateway-error' | 'config-audit' | 'commands'
+
+export type OpenClawServiceAction = 'install' | 'uninstall' | 'start' | 'stop' | 'restart'
 
 export type OpenClawServiceActionResult = OpenClawServiceStatus & {
   action: OpenClawServiceAction

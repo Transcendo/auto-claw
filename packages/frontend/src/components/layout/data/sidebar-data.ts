@@ -6,6 +6,7 @@ import {
   Fingerprint,
   Plug,
   Puzzle,
+  ScrollText,
   Settings,
   Shield,
   Waypoints,
@@ -68,6 +69,16 @@ export const sidebarData: SidebarData = {
           title: 'Cron',
           url: '/cron',
           icon: Clock3,
+        },
+      ],
+    },
+    {
+      title: 'Runtime',
+      items: [
+        {
+          title: 'Log',
+          url: '/logs',
+          icon: ScrollText,
         },
       ],
     },

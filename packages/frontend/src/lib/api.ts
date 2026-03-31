@@ -7,6 +7,7 @@ import type {
   OpenClawAgentsPayload,
   OpenClawBackupRecord,
   OpenClawChannelsSection,
+  OpenClawCommandResult,
   OpenClawConfigMetadata,
   OpenClawConfigSectionKey,
   OpenClawEnvFilePayload,
@@ -19,6 +20,8 @@ import type {
   OpenClawVersionCheckResult,
   OpenClawSkillCatalogPayload,
   OpenClawSkillContentPayload,
+  RuntimeLogsPayload,
+  LogFileType,
 } from '@/types/openclaw'
 
 export const api = axios.create({
@@ -57,10 +60,12 @@ export async function updateEnvironmentSettingsRequest(
 }
 
 export async function createEnvironmentRequest(payload: {
+  profile: string
   openclawPath: string
   port: number
 }) {
   const { data } = await api.post<{ item: EnvironmentRecord }>('/environments', {
+    profile: payload.profile,
     openclawPath: payload.openclawPath,
     port: payload.port,
   })
@@ -258,6 +263,11 @@ export async function checkOpenClawVersionRequest(environmentId: string) {
   return data
 }
 
+export async function runDoctorFixRequest(environmentId: string) {
+  const { data } = await api.post<OpenClawCommandResult>('/settings/doctor-fix', { environmentId })
+  return data
+}
+
 export async function fetchOpenClawServiceStatus(environmentId: string) {
   const { data } = await api.get<OpenClawServiceStatus>(
     '/settings/service/status',
@@ -275,6 +285,38 @@ export async function runOpenClawServiceAction(
   const { data } = await api.post<OpenClawServiceActionResult>(
     `/settings/service/${action}`,
     { environmentId }
+  )
+  return data
+}
+
+export async function fetchRuntimeLogs(
+  environmentId: string,
+  tail?: number,
+  after?: number
+) {
+  const { data } = await api.get<RuntimeLogsPayload>(
+    `/environments/${environmentId}/runtime/logs`,
+    { params: { tail, after } }
+  )
+  return data
+}
+
+export async function fetchLogFiles(environmentId: string) {
+  const { data } = await api.get<{ files: LogFileType[] }>(
+    `/environments/${environmentId}/logs/files`
+  )
+  return data.files
+}
+
+export async function fetchLogFile(
+  environmentId: string,
+  logType: string,
+  tail?: number,
+  after?: number
+) {
+  const { data } = await api.get<RuntimeLogsPayload>(
+    `/environments/${environmentId}/logs/${logType}`,
+    { params: { tail, after } }
   )
   return data
 }

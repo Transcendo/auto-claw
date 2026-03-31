@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  ChevronLeft,
   Folder,
   Hammer,
   Pencil,
@@ -12,10 +13,13 @@ import {
   Square,
   Terminal,
   Trash2,
+  Wrench,
 } from 'lucide-react'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import {
   checkOpenClawVersionRequest,
+  runDoctorFixRequest,
   createEnvironmentRequest,
   deleteEnvironmentRequest,
   fetchBackupContent,
@@ -115,10 +119,11 @@ function EnvironmentDialog({
   mode: 'create' | 'edit'
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (payload: { openclawPath: string, port: number }) => void
+  onSubmit: (payload: { profile?: string, openclawPath: string, port: number }) => void
   initialEnvironment?: EnvironmentRecord | null
   isPending: boolean
 }) {
+  const [profile, setProfile] = useState('')
   const [openclawPath, setOpenclawPath] = useState('')
   const [port, setPort] = useState('18789')
 
@@ -127,12 +132,18 @@ function EnvironmentDialog({
       return
     }
 
+    setProfile('')
     setOpenclawPath(initialEnvironment?.openclawPath ?? '')
     setPort(String(initialEnvironment?.port ?? 18789))
   }, [initialEnvironment, open])
 
   const parsedPort = Number(port)
-  const isValid = openclawPath.trim().length > 0 && Number.isInteger(parsedPort) && parsedPort > 0
+  const isProfileValid = mode === 'edit' || /^[a-z0-9][a-z0-9-]*$/.test(profile.trim())
+  const isValid
+    = openclawPath.trim().length > 0
+    && Number.isInteger(parsedPort)
+    && parsedPort > 0
+    && isProfileValid
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -147,12 +158,26 @@ function EnvironmentDialog({
         </DialogHeader>
 
         <div className='space-y-4'>
+          {mode === 'create' && (
+            <div className='space-y-2'>
+              <div className='text-sm font-medium'>Profile</div>
+              <Input
+                value={profile}
+                onChange={event => setProfile(event.target.value)}
+                placeholder='my-environment'
+              />
+              <p className='text-xs text-muted-foreground'>
+                Unique identifier for daemon isolation. Lowercase letters, numbers, and hyphens only.
+              </p>
+            </div>
+          )}
+
           <div className='space-y-2'>
             <div className='text-sm font-medium'>Path</div>
             <Input
               value={openclawPath}
               onChange={event => setOpenclawPath(event.target.value)}
-              placeholder='/Users/javis/code/openclaw-instance'
+              placeholder='~/.openclaw'
             />
           </div>
 
@@ -176,6 +201,7 @@ function EnvironmentDialog({
             disabled={!isValid || isPending}
             onClick={() =>
               onSubmit({
+                ...(mode === 'create' ? { profile: profile.trim() } : {}),
                 openclawPath: openclawPath.trim(),
                 port: parsedPort,
               })}
@@ -196,6 +222,8 @@ function EnvironmentDialog({
 
 export function SettingsPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const { history } = useRouter()
   const {
     environments,
     isLoadingEnvironments,
@@ -204,6 +232,7 @@ export function SettingsPage() {
     setSelectedEnvironmentId,
     environmentStatus,
   } = useEnvironmentContext()
+  const hasEnvironments = environments.length > 0
   const [runMode, setRunMode] = useState<OpenClawRunMode>('global')
   const [launchMode, setLaunchMode] = useState<OpenClawLaunchMode>('daemon')
   const [sourcePath, setSourcePath] = useState('')
@@ -212,6 +241,7 @@ export function SettingsPage() {
   const [versionOutput, setVersionOutput] = useState<string>('')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const activeEnvironmentId = selectedEnvironment?.id ?? null
 
   const settingsQuery = useQuery({
@@ -358,6 +388,7 @@ export function SettingsPage() {
   const deleteEnvironmentMutation = useMutation({
     mutationFn: deleteEnvironmentRequest,
     onSuccess: async (_, environmentId) => {
+      setIsDeleteDialogOpen(false)
       toast.success('Environment removed')
       if (selectedEnvironmentId === environmentId) {
         setPreviewVersion(null)
@@ -403,6 +434,24 @@ export function SettingsPage() {
     onError: (error) => {
       setVersionOutput(error instanceof Error ? error.message : 'Version check failed')
       toast.error(error instanceof Error ? error.message : 'Version check failed')
+    },
+  })
+
+  const doctorFixMutation = useMutation({
+    mutationFn: (environmentId: string) => runDoctorFixRequest(environmentId),
+    onSuccess: (result) => {
+      const output = result.stdout.trim() || result.stderr.trim()
+      setVersionOutput(output || 'No output returned')
+      if (result.ok) {
+        toast.success('Repair completed')
+      }
+      else {
+        toast.error((result.error ?? result.stderr.trim()) || 'Repair failed')
+      }
+    },
+    onError: (error) => {
+      setVersionOutput(error instanceof Error ? error.message : 'Repair failed')
+      toast.error(error instanceof Error ? error.message : 'Repair failed')
     },
   })
 
@@ -473,6 +522,23 @@ export function SettingsPage() {
     <div className='container max-w-none px-6 py-8'>
       <main className='mx-auto flex max-w-7xl flex-col gap-6'>
         <div className='space-y-2'>
+          <Button
+            type='button'
+            variant='ghost'
+            className='h-auto px-0 text-muted-foreground'
+            disabled={!hasEnvironments}
+            onClick={() => {
+              if (history.length > 1) {
+                history.go(-1)
+              }
+              else {
+                navigate({ to: '/models' })
+              }
+            }}
+          >
+            <ChevronLeft className='size-4' />
+            Back
+          </Button>
           <h1 className='text-3xl font-semibold tracking-tight'>Settings</h1>
         </div>
 
@@ -510,7 +576,7 @@ export function SettingsPage() {
                     <Input
                       value={sourcePath}
                       onChange={event => setSourcePath(event.target.value)}
-                      placeholder='/Users/javis/code/openclaw'
+                      placeholder='~/.openclaw'
                     />
                   </div>
                 )}
@@ -617,6 +683,17 @@ export function SettingsPage() {
                       >
                         <Terminal className='size-4' />
                         {checkVersionMutation.isPending ? 'Checking...' : 'Check'}
+                      </Button>
+
+                      <Button
+                        variant='outline'
+                        className='gap-2'
+                        disabled={!commandReady || doctorFixMutation.isPending}
+                        onClick={() =>
+                          doctorFixMutation.mutate(selectedEnvironment.id)}
+                      >
+                        <Wrench className='size-4' />
+                        {doctorFixMutation.isPending ? 'Repairing...' : 'Repair'}
                       </Button>
                     </div>
 
@@ -906,38 +983,48 @@ export function SettingsPage() {
 
                         <Button onClick={() => setIsCreateDialogOpen(true)}>Create</Button>
 
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant='ghost'
-                              className='gap-2 text-muted-foreground'
-                              disabled={!selectedEnvironment}
-                            >
-                              <Trash2 className='size-4' />
-                              Delete
-                            </Button>
-                          </AlertDialogTrigger>
+                        <Button
+                          variant='ghost'
+                          className='gap-2 text-muted-foreground'
+                          disabled={!selectedEnvironment}
+                          onClick={() => setIsDeleteDialogOpen(true)}
+                        >
+                          <Trash2 className='size-4' />
+                          Delete
+                        </Button>
+
+                        <AlertDialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+                          if (!deleteEnvironmentMutation.isPending) {
+                            setIsDeleteDialogOpen(open)
+                          }
+                        }}
+                        >
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete environment?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This only removes the environment record from Auto Claw. It does
-                                not delete files under
+                                This will stop any running OpenClaw service for this environment
+                                and remove the environment record from Auto Claw. It does not
+                                delete files under
                                 {' '}
                                 <code>{selectedEnvironment?.openclawPath}</code>
                                 .
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogCancel disabled={deleteEnvironmentMutation.isPending}>
+                                Cancel
+                              </AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() =>
-                                  selectedEnvironment
-                                    && deleteEnvironmentMutation.mutate(
-                                      selectedEnvironment.id
-                                    )}
+                                disabled={deleteEnvironmentMutation.isPending}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  if (selectedEnvironment) {
+                                    deleteEnvironmentMutation.mutate(selectedEnvironment.id)
+                                  }
+                                }}
                               >
-                                Delete
+                                {deleteEnvironmentMutation.isPending ? 'Deleting...' : 'Delete'}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -1114,7 +1201,11 @@ export function SettingsPage() {
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         isPending={createEnvironmentMutation.isPending}
-        onSubmit={payload => createEnvironmentMutation.mutate(payload)}
+        onSubmit={payload => createEnvironmentMutation.mutate({
+          profile: payload.profile ?? '',
+          openclawPath: payload.openclawPath,
+          port: payload.port,
+        })}
       />
 
       <EnvironmentDialog

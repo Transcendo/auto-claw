@@ -207,3 +207,21 @@ export type OpenClawServiceAction = 'install' | 'start' | 'stop' | 'restart'
 export type OpenClawServiceActionResult = OpenClawServiceStatus & {
   action: OpenClawServiceAction
 }
+
+export type RuntimeLogLine = {
+  time?: string
+  level?: string
+  subsystem?: string
+  module?: string
+  message: string
+  raw: string
+}
+
+export type RuntimeLogsPayload = {
+  lines: RuntimeLogLine[]
+  logPath: string
+  offset: number
+  hasMore: boolean
+}
+
+export type LogFileType = 'gateway' | 'gateway-error' | 'config-audit' | 'commands'

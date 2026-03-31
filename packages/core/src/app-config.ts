@@ -116,8 +116,11 @@ function normalizeEnvironmentRecord(value: unknown): EnvironmentRecord | null {
     return null
   }
 
+  const profile = normalizeString(value.profile) ?? id
+
   return {
     id,
+    profile,
     openclawPath,
     port: normalizePort(value.port),
     launchMode: value.launchMode === 'runtime' ? 'runtime' : 'daemon',

@@ -66,7 +66,7 @@ function toEnvFilePath(openclawPath: string) {
 }
 
 function toBackupFilename(version: number) {
-  return `openclaw.${version}.json`
+  return `openclaw.json.bak.${version}`
 }
 
 function toBackupPath(openclawPath: string, version: number) {
@@ -306,7 +306,7 @@ async function getNextBackupVersion(openclawPath: string) {
       continue
     }
 
-    const match = entry.name.match(/^openclaw\.(\d+)\.json$/)
+    const match = entry.name.match(/^openclaw\.json\.bak\.(\d+)$/)
     if (!match) {
       continue
     }
@@ -689,7 +689,7 @@ export async function listOpenClawBackups(
       continue
     }
 
-    const match = entry.name.match(/^openclaw\.(\d+)\.json$/)
+    const match = entry.name.match(/^openclaw\.json\.bak\.(\d+)$/)
     if (!match) {
       continue
     }
@@ -792,6 +792,7 @@ export async function seedDefaultEnvironment() {
   }
 
   return createEnvironment({
+    profile: 'seed',
     openclawPath: seedPath,
     port: 18789,
   })
